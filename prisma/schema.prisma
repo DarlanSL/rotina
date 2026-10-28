@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Usuários ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  /// Login: nome de usuário (minúsculo) + senha com hash scrypt
+  username      String    @unique
+  passwordHash  String?
+  email         String?   @unique
+  timezone      String    @default("America/Sao_Paulo")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  activities Activity[]
+  tags       Tag[]
+  routines   Routine[]
+  documents  Document[]
+  projects   Project[]
+  items      Item[]
+}
+
+// ---------- Diário de Atividades ----------
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date
+  title     String
+  notes     String?
+  startTime String? // "HH:mm" (hora local, sem fuso)
+  endTime   String? // "HH:mm"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tags Tag[]
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Tag {
+  id     String  @id @default(cuid())
+  userId String
+  name   String
+  color  String?
+
+  activities Activity[]
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+// ---------- Rotinas / Ciclos de revisão ----------
+
+model Routine {
+  id              String    @id @default(cuid())
+  userId          String
+  title           String
+  description     String?
+  intervalDays    Int // "a cada X dias a partir da última conclusão"
+  alertDaysBefore Int       @default(3)
+  lastCompletedAt DateTime? @db.Date
+  nextDueAt       DateTime  @db.Date // desnormalizado p/ ordenar e alertar
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  completions   RoutineCompletion[]
+  postponements RoutinePostponement[]
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextDueAt])
+}
+
+model RoutineCompletion {
+  id          String   @id @default(cuid())
+  routineId   String
+  completedAt DateTime @db.Date
+  note        String?
+  createdAt   DateTime @default(now())
+
+  routine Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@index([routineId, completedAt])
+}
+
+/// Adiamento de uma revisão, sempre com justificativa
+model RoutinePostponement {
+  id        String   @id @default(cuid())
+  routineId String
+  fromDate  DateTime @db.Date // data prevista antes do adiamento
+  toDate    DateTime @db.Date // nova data
+  reason    String
+  createdAt DateTime @default(now())
+
+  routine Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@index([routineId, createdAt])
+}
+
+// ---------- Documentos ----------
+
+model Document {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String
+  issuer    String?
+  expiresAt DateTime @db.Date
+  warnDays  Int      @default(30) // janela "próximo do vencimento"
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+// ---------- Ideias, Anotações, Lembretes e Melhorias ----------
+
+enum ItemType {
+  IDEA
+  NOTE
+  REMINDER
+  IMPROVEMENT
+}
+
+enum ItemStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  DISCARDED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  color       String?
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items Item[]
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model Item {
+  id          String     @id @default(cuid())
+  userId      String
+  projectId   String?
+  type        ItemType
+  title       String
+  content     String?
+  status      ItemStatus @default(OPEN)
+  priority    Priority   @default(MEDIUM)
+  remindAt    DateTime? // lembrete (data+hora) ou prazo de melhoria
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, status])
+  @@index([userId, remindAt])
+}
