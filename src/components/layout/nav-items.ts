@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  CalendarDaysIcon,
   FileChartColumnIcon,
   FileTextIcon,
   FolderKanbanIcon,
@@ -40,6 +41,11 @@ export const TONES = {
     tile: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
     active: "bg-cyan-50 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200",
   },
+  fuchsia: {
+    icon: "text-fuchsia-600 dark:text-fuchsia-400",
+    tile: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300",
+    active: "bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-500/15 dark:text-fuchsia-200",
+  },
   rose: {
     icon: "text-rose-600 dark:text-rose-400",
     tile: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
@@ -51,6 +57,7 @@ export type Tone = keyof typeof TONES;
 
 export const NAV_ITEMS = [
   { key: "inicio", href: "/", label: "Início", icon: LayoutDashboardIcon, tone: "indigo", mobile: true },
+  { key: "agenda", href: "/agenda", label: "Agenda", icon: CalendarDaysIcon, tone: "fuchsia", mobile: true },
   { key: "diario", href: "/diario", label: "Diário", icon: BookOpenIcon, tone: "sky", mobile: true },
   { key: "rotinas", href: "/rotinas", label: "Rotinas", icon: RefreshCwIcon, tone: "violet", mobile: true },
   {

@@ -168,3 +168,8 @@ export function minutesNowInTz(timeZone = DEFAULT_TZ, now = new Date()): number 
     .map(Number);
   return h * 60 + m;
 }
+
+/** "qui" */
+export function formatWeekdayShortBR(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "short" }).format(toDbDate(iso)).replace(".", "");
+}

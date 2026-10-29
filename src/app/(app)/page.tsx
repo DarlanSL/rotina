@@ -2,11 +2,13 @@ import {
   AlertTriangleIcon,
   BookOpenIcon,
   CalendarCheckIcon,
+  ChevronRightIcon,
   ClockIcon,
   PartyPopperIcon,
   WrenchIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LinkButton } from "@/components/link-button";
 import { BucketList } from "@/components/dashboard/bucket-list";
 import { DoneToday } from "@/components/dashboard/done-today";
 import { QuickLogDialog } from "@/components/dashboard/quick-log-dialog";
@@ -112,6 +114,11 @@ export default async function DashboardPage() {
                 </span>
               )}
             </CardTitle>
+            <CardAction>
+              <LinkButton href="/agenda" variant="ghost" size="sm" className="-my-1">
+                Ver agenda <ChevronRightIcon />
+              </LinkButton>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {agendaCount === 0 ? (

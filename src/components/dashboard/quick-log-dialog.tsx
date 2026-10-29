@@ -10,10 +10,14 @@ export function QuickLogDialog({
   today,
   knownTags,
   className,
+  label = "Registrar atividade",
+  title = "O que você fez hoje?",
 }: {
   today: string;
   knownTags: string[];
   className?: string;
+  label?: string;
+  title?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -22,13 +26,13 @@ export function QuickLogDialog({
       <DialogTrigger
         render={
           <Button className={className}>
-            <PlusIcon /> Registrar atividade
+            <PlusIcon /> {label}
           </Button>
         }
       />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>O que você fez hoje?</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <ActivityForm today={today} knownTags={knownTags} onDone={() => setOpen(false)} />
       </DialogContent>
