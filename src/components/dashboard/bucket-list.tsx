@@ -9,6 +9,7 @@ import { formatDateBR, formatDateTimeBR, formatTimeOfDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Bucket, ScheduledItem } from "@/lib/queries/dashboard";
 import type { ActivityView } from "@/lib/queries/activities";
+import { sharedLabel } from "@/lib/shared-label";
 import type { DocumentView } from "@/lib/queries/documents";
 import type { RoutineView } from "@/lib/queries/routines";
 
@@ -61,7 +62,7 @@ export function ActivityRow({ activity: a, muted }: { activity: ActivityView; mu
       title={a.title}
       subtitle={`Atividade${a.startTime ? ` · ${a.startTime}${a.endTime ? `–${a.endTime}` : ""}` : ""}${
         a.tags.length ? ` · ${a.tags.map((t) => `#${t}`).join(" ")}` : ""
-      }`}
+      }${sharedLabel(a) ? ` · ${sharedLabel(a)}` : ""}`}
       href="/diario"
       muted={muted}
     />

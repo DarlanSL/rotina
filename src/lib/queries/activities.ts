@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { fromDbDate, toDbDate } from "@/lib/dates";
+import { visibleActivity } from "@/lib/queries/sharing";
 import type { CurrentUser } from "@/lib/session";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -13,10 +14,15 @@ const activityOrder = [
   { createdAt: "asc" },
 ] satisfies Prisma.ActivityOrderByWithRelationInput[];
 
-const activityInclude = { tags: { select: { id: true, name: true }, orderBy: { name: "asc" } } } as const;
+const activityInclude = {
+  tags: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+  user: { select: { username: true } },
+  shares: { select: { userId: true, notifyBefore: true, user: { select: { username: true } } }, orderBy: { createdAt: "asc" } },
+} as const;
 
 type ActivityRow = {
   id: string;
+  userId: string;
   date: Date;
   title: string;
   notes: string | null;
@@ -24,9 +30,14 @@ type ActivityRow = {
   endTime: string | null;
   notifyBefore: number | null;
   tags: { id: string; name: string }[];
+  user: { username: string };
+  shares: { userId: string; notifyBefore: number | null; user: { username: string } }[];
 };
 
-export function toActivityView(a: ActivityRow) {
+/** Visão de quem está olhando (`viewerId`): o aviso é o dele; as tags são só do dono. */
+export function toActivityView(a: ActivityRow, viewerId: string) {
+  const mine = a.userId === viewerId;
+  const myShare = a.shares.find((s) => s.userId === viewerId);
   return {
     id: a.id,
     date: fromDbDate(a.date),
@@ -34,8 +45,13 @@ export function toActivityView(a: ActivityRow) {
     notes: a.notes,
     startTime: a.startTime,
     endTime: a.endTime,
-    notifyBefore: a.notifyBefore,
-    tags: a.tags.map((t) => t.name),
+    notifyBefore: mine ? a.notifyBefore : (myShare?.notifyBefore ?? null),
+    tags: mine ? a.tags.map((t) => t.name) : [],
+    /** Criada por mim? Se não, `owner` é quem compartilhou. */
+    mine,
+    owner: a.user.username,
+    /** Com quem está compartilhada (sem o dono) */
+    sharedWith: a.shares.map((s) => s.user.username),
   };
 }
 
@@ -44,18 +60,19 @@ export type ActivityView = ReturnType<typeof toActivityView>;
 export async function listActivities(user: CurrentUser, filters: ActivityFilters) {
   const rows = await db.activity.findMany({
     where: {
-      userId: user.id,
+      ...visibleActivity(user.id),
       date: {
         gte: filters.from ? toDbDate(filters.from) : undefined,
         lte: filters.to ? toDbDate(filters.to) : undefined,
       },
-      tags: filters.tag ? { some: { name: filters.tag } } : undefined,
+      // tags são do dono: filtrar por tag mostra só as minhas
+      ...(filters.tag ? { userId: user.id, tags: { some: { name: filters.tag } } } : {}),
     },
     orderBy: activityOrder,
     include: activityInclude,
     take: 200,
   });
-  return rows.map(toActivityView);
+  return rows.map((r) => toActivityView(r, user.id));
 }
 
 export async function listTags(user: CurrentUser) {

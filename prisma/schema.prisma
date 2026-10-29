@@ -33,26 +33,44 @@ model User {
   items       Item[]
   lists       List[]
   attachments Attachment[]
+
+  sharedActivities ActivityShare[]
+  sharedLists      ListShare[]
 }
 
 // ---------- Diário de Atividades ----------
 
 model Activity {
-  id        String   @id @default(cuid())
-  userId    String
-  date      DateTime @db.Date
-  title     String
-  notes     String?
-  startTime String? // "HH:mm" (hora local, sem fuso)
-  endTime   String? // "HH:mm"
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime @db.Date
+  title        String
+  notes        String?
+  startTime    String? // "HH:mm" (hora local, sem fuso)
+  endTime      String? // "HH:mm"
   notifyBefore Int? // minutos de antecedência do aviso; null = padrão do aparelho, -1 = não avisar
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tags Tag[]
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags   Tag[]
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares ActivityShare[]
 
   @@index([userId, date])
+}
+
+/// Compromisso compartilhado: aparece também para este usuário (que pode editar).
+model ActivityShare {
+  activityId   String
+  userId       String
+  notifyBefore Int? // antecedência do aviso para este participante
+  createdAt    DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, userId])
+  @@index([userId])
 }
 
 model Tag {
@@ -175,19 +193,19 @@ model Project {
 }
 
 model Item {
-  id          String     @id @default(cuid())
-  userId      String
-  projectId   String?
-  type        ItemType
-  title       String
-  content     String?
-  status      ItemStatus @default(OPEN)
-  priority    Priority   @default(MEDIUM)
-  remindAt    DateTime? // lembrete (data+hora) ou prazo de melhoria
+  id           String     @id @default(cuid())
+  userId       String
+  projectId    String?
+  type         ItemType
+  title        String
+  content      String?
+  status       ItemStatus @default(OPEN)
+  priority     Priority   @default(MEDIUM)
+  remindAt     DateTime? // lembrete (data+hora) ou prazo de melhoria
   notifyBefore Int? // minutos de antecedência do aviso; null = padrão do aparelho, -1 = não avisar
-  completedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  completedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -226,8 +244,22 @@ model List {
 
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries ListEntry[]
+  shares  ListShare[]
 
   @@unique([userId, name])
+}
+
+/// Lista compartilhada: este usuário também vê e edita os itens.
+model ListShare {
+  listId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([listId, userId])
+  @@index([userId])
 }
 
 model ListEntry {

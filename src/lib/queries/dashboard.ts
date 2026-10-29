@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { addDays, durationMinutes, minutesNowInTz, startOfDayInTz, toDbDate, todayISO } from "@/lib/dates";
 import type { CurrentUser } from "@/lib/session";
 import { activityInclude, activityOrder, toActivityView, type ActivityView } from "@/lib/queries/activities";
+import { visibleActivity } from "@/lib/queries/sharing";
 import { toDocumentView, type DocumentView } from "@/lib/queries/documents";
 import { toRoutineView, type RoutineView } from "@/lib/queries/routines";
 import type { ItemType, Priority } from "@/generated/prisma/enums";
@@ -50,7 +51,7 @@ export async function getDashboardData(user: CurrentUser) {
 
   const [activities, routines, documents, items, routinesDone, itemsDone, openImprovements] = await Promise.all([
     db.activity.findMany({
-      where: { userId: user.id, date: toDbDate(today) },
+      where: { ...visibleActivity(user.id), date: toDbDate(today) },
       orderBy: activityOrder,
       include: activityInclude,
     }),
@@ -117,7 +118,7 @@ export async function getDashboardData(user: CurrentUser) {
   // Atividade com início ainda por vir = programada; as demais já foram feitas
   const nowMinutes = minutesNowInTz(tz);
   const doneActivities: ActivityView[] = [];
-  for (const a of activities.map(toActivityView)) {
+  for (const a of activities.map((row) => toActivityView(row, user.id))) {
     if (a.startTime && durationMinutes("00:00", a.startTime) > nowMinutes) agenda.activities.push(a);
     else doneActivities.push(a);
   }

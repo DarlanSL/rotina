@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,8 @@ export function ActivityForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { pending, run } = useAction();
   const prefix = activity ? `act-${activity.id}` : "act-new";
+  // tags e com quem compartilhar são de quem criou
+  const owner = !activity || activity.mine;
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,22 +95,43 @@ export function ActivityForm({
       )}
       {compact && <input type="hidden" name="notes" defaultValue="" />}
       <div className="flex flex-wrap items-end gap-3">
-        <FormField label="Tags" htmlFor={`${prefix}-tags`} className="min-w-48 flex-1">
-          <Input
-            id={`${prefix}-tags`}
-            name="tags"
-            list={`${prefix}-tag-options`}
-            placeholder="ex: trabalho, saúde"
-            defaultValue={activity?.tags.join(", ")}
-            autoComplete="off"
-            autoCapitalize="none"
-          />
-          <datalist id={`${prefix}-tag-options`}>
-            {knownTags.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
-        </FormField>
+        {owner ? (
+          <>
+            <FormField label="Tags" htmlFor={`${prefix}-tags`} className="min-w-48 flex-1">
+              <Input
+                id={`${prefix}-tags`}
+                name="tags"
+                list={`${prefix}-tag-options`}
+                placeholder="ex: trabalho, saúde"
+                defaultValue={activity?.tags.join(", ")}
+                autoComplete="off"
+                autoCapitalize="none"
+              />
+              <datalist id={`${prefix}-tag-options`}>
+                {knownTags.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            </FormField>
+            <FormField label="Compartilhar com" htmlFor={`${prefix}-share`} className="min-w-48 flex-1">
+              <Input
+                id={`${prefix}-share`}
+                name="shareWith"
+                placeholder="usuário (ex: ana)"
+                defaultValue={activity?.sharedWith.join(", ")}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </FormField>
+          </>
+        ) : (
+          <p className="flex min-w-48 flex-1 items-center gap-1.5 self-center text-sm text-muted-foreground">
+            <UsersIcon className="size-4 shrink-0" />
+            Compartilhada por @{activity?.owner}
+          </p>
+        )}
         <NotifyBeforeField id={`${prefix}-notify`} defaultValue={activity?.notifyBefore} className="w-52" />
         <Button type="submit" disabled={pending} className="h-8">
           {activity ? "Salvar" : "Registrar"}

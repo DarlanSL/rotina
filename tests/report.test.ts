@@ -162,4 +162,10 @@ describe("defaultExcluded", () => {
     expect([...defaultExcluded({ ...base, hiddenTags: ["saúde"] })]).toEqual([reportKey.activity("1")]);
     expect(defaultExcluded(base).size).toBe(0);
   });
+
+  it("compromisso compartilhado (familiar) já vem desmarcado", () => {
+    const [day] = base.days;
+    const shared = { ...base, days: [{ ...day, activities: day.activities.map((x, i) => (i === 0 ? { ...x, shared: true } : x)) }] };
+    expect([...defaultExcluded(shared)]).toEqual([reportKey.activity(day.activities[0].id)]);
+  });
 });

@@ -4,6 +4,7 @@ import { addDays, formatTimeOfDay, isoDateInTz, startOfDayInTz, toDbDate, todayI
 import { buildAgendaDays } from "@/lib/agenda";
 import type { CurrentUser } from "@/lib/session";
 import { activityInclude, toActivityView } from "@/lib/queries/activities";
+import { visibleActivity } from "@/lib/queries/sharing";
 import { toDocumentView } from "@/lib/queries/documents";
 import { toRoutineView } from "@/lib/queries/routines";
 import type { Bucket, ScheduledItem } from "@/lib/queries/dashboard";
@@ -31,7 +32,7 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
 
   const [activities, items, routines, documents, overdueItems, overdueRoutines, overdueDocuments] = await Promise.all([
     db.activity.findMany({
-      where: { userId: user.id, date: { gte: toDbDate(from), lte: toDbDate(to) } },
+      where: { ...visibleActivity(user.id), date: { gte: toDbDate(from), lte: toDbDate(to) } },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
       include: activityInclude,
     }),
@@ -76,7 +77,7 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
     days,
     today,
     now,
-    activities: activities.map(toActivityView),
+    activities: activities.map((a) => toActivityView(a, user.id)),
     items: (items as ScheduledItem[]).map((item) => ({
       item,
       date: isoDateInTz(item.remindAt, tz),

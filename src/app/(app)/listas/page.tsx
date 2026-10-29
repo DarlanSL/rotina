@@ -47,6 +47,8 @@ export default async function ListasPage() {
                 <p className="mt-auto text-xs text-muted-foreground">
                   {l.pending} a comprar
                   {l.done > 0 && ` · ${l.done} ${l.done === 1 ? "marcado" : "marcados"}`}
+                  {l.sharedBy && ` · de @${l.sharedBy}`}
+                  {l.sharedWith.length > 0 && ` · com ${l.sharedWith.map((u) => `@${u}`).join(", ")}`}
                 </p>
               </Link>
             </li>

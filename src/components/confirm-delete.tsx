@@ -19,8 +19,10 @@ export function ConfirmDelete({
   what,
   action,
   trigger,
+  description = "Essa ação não pode ser desfeita.",
 }: {
   what: string;
+  description?: string;
   action: () => Promise<ActionResult>;
   trigger?: React.ReactElement;
 }) {
@@ -41,7 +43,7 @@ export function ConfirmDelete({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Excluir {what}?</DialogTitle>
-          <DialogDescription>Essa ação não pode ser desfeita.</DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

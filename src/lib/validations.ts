@@ -39,6 +39,8 @@ export const activitySchema = z
     startTime: optionalTime,
     endTime: optionalTime,
     notifyBefore,
+    // usuários com quem compartilhar: "ana, bruno"
+    shareWith: optionalText(500),
     // "trabalho, saúde" → ["trabalho", "saúde"]
     tags: z.preprocess(
       (v) =>

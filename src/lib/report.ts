@@ -10,6 +10,8 @@ export type ReportActivity = {
   endTime: string | null;
   minutes: number;
   tags: string[];
+  /** Compromisso compartilhado com outra pessoa (familiar): fora do relatório por padrão */
+  shared?: boolean;
 };
 
 export type ReportData = {
@@ -62,7 +64,9 @@ export const reportKey = {
 export function defaultExcluded(data: ReportData): Set<string> {
   const hidden = new Set(data.hiddenTags);
   return new Set(
-    data.days.flatMap((d) => d.activities.filter((a) => a.tags.some((t) => hidden.has(t))).map((a) => reportKey.activity(a.id))),
+    data.days.flatMap((d) =>
+      d.activities.filter((a) => a.shared || a.tags.some((t) => hidden.has(t))).map((a) => reportKey.activity(a.id)),
+    ),
   );
 }
 

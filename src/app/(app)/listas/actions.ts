@@ -5,12 +5,14 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { firstError, listNameSchema, splitListEntries } from "@/lib/validations";
 import { failure, success, type ActionResult } from "@/lib/action-result";
+import { MAX_SHARES, resolveUsers, visibleList } from "@/lib/queries/sharing";
 import { Prisma } from "@/generated/prisma/client";
 
 const DUPLICATE = "Já existe uma lista com esse nome";
 
-async function ownsList(userId: string, listId: string) {
-  return Boolean(await db.list.findFirst({ where: { id: listId, userId }, select: { id: true } }));
+/** Dono ou alguém com quem a lista foi compartilhada. */
+async function canEditList(userId: string, listId: string) {
+  return Boolean(await db.list.findFirst({ where: { id: listId, ...visibleList(userId) }, select: { id: true } }));
 }
 
 /** Marca a lista como mexida agora (ela sobe na tela de listas). */
@@ -39,9 +41,9 @@ export async function renameList(id: string, name: string): Promise<ActionResult
   const user = await requireUser();
   const parsed = listNameSchema.safeParse(name);
   if (!parsed.success) return failure(firstError(parsed.error));
+  if (!(await canEditList(user.id, id))) return failure("Lista não encontrada");
   try {
-    const { count } = await db.list.updateMany({ where: { id, userId: user.id }, data: { name: parsed.data } });
-    if (!count) return failure("Lista não encontrada");
+    await db.list.update({ where: { id }, data: { name: parsed.data } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return failure(DUPLICATE);
     throw error;
@@ -49,6 +51,7 @@ export async function renameList(id: string, name: string): Promise<ActionResult
   return done("Lista renomeada");
 }
 
+/** Só o dono exclui (some para todos). */
 export async function deleteList(id: string): Promise<ActionResult> {
   const user = await requireUser();
   const { count } = await db.list.deleteMany({ where: { id, userId: user.id } });
@@ -61,7 +64,7 @@ export async function addListEntries(listId: string, text: string): Promise<Acti
   const user = await requireUser();
   const texts = splitListEntries(text);
   if (texts.length === 0) return failure("Escreva o item");
-  if (!(await ownsList(user.id, listId))) return failure("Lista não encontrada");
+  if (!(await canEditList(user.id, listId))) return failure("Lista não encontrada");
 
   await db.listEntry.createMany({ data: texts.map((t) => ({ listId, text: t })) });
   await touch(listId);
@@ -71,7 +74,7 @@ export async function addListEntries(listId: string, text: string): Promise<Acti
 export async function setListEntryDone(id: string, isDone: boolean): Promise<ActionResult> {
   const user = await requireUser();
   const { count } = await db.listEntry.updateMany({
-    where: { id, list: { userId: user.id } },
+    where: { id, list: visibleList(user.id) },
     data: { done: isDone, doneAt: isDone ? new Date() : null },
   });
   if (!count) return failure("Item não encontrado");
@@ -80,7 +83,7 @@ export async function setListEntryDone(id: string, isDone: boolean): Promise<Act
 
 export async function deleteListEntry(id: string): Promise<ActionResult> {
   const user = await requireUser();
-  const { count } = await db.listEntry.deleteMany({ where: { id, list: { userId: user.id } } });
+  const { count } = await db.listEntry.deleteMany({ where: { id, list: visibleList(user.id) } });
   if (!count) return failure("Item não encontrado");
   return done();
 }
@@ -88,7 +91,7 @@ export async function deleteListEntry(id: string): Promise<ActionResult> {
 /** Tira da lista o que já foi marcado. */
 export async function clearDoneEntries(listId: string): Promise<ActionResult> {
   const user = await requireUser();
-  if (!(await ownsList(user.id, listId))) return failure("Lista não encontrada");
+  if (!(await canEditList(user.id, listId))) return failure("Lista não encontrada");
   const { count } = await db.listEntry.deleteMany({ where: { listId, done: true } });
   return done(count ? `${count} ${count === 1 ? "item removido" : "itens removidos"}` : "Nada marcado");
 }
@@ -96,7 +99,40 @@ export async function clearDoneEntries(listId: string): Promise<ActionResult> {
 /** Desmarca tudo para reaproveitar a lista na próxima compra. */
 export async function uncheckAllEntries(listId: string): Promise<ActionResult> {
   const user = await requireUser();
-  if (!(await ownsList(user.id, listId))) return failure("Lista não encontrada");
+  if (!(await canEditList(user.id, listId))) return failure("Lista não encontrada");
   await db.listEntry.updateMany({ where: { listId, done: true }, data: { done: false, doneAt: null } });
   return done("Tudo desmarcado");
+}
+
+/** Dono compartilha a lista com outro usuário (pelo nome de usuário). */
+export async function shareList(listId: string, username: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const list = await db.list.findFirst({
+    where: { id: listId, userId: user.id },
+    select: { _count: { select: { shares: true } } },
+  });
+  if (!list) return failure("Lista não encontrada");
+  const resolved = await resolveUsers(username, user.id);
+  if (!resolved.ok) return failure(resolved.error);
+  if (!resolved.ids.length) return failure("Informe o usuário de outra pessoa");
+  if (list._count.shares + resolved.ids.length > MAX_SHARES) return failure(`Compartilhe com até ${MAX_SHARES} pessoas`);
+
+  await db.listShare.createMany({ data: resolved.ids.map((userId) => ({ listId, userId })), skipDuplicates: true });
+  return done("Lista compartilhada");
+}
+
+/** Dono tira alguém da lista. */
+export async function unshareList(listId: string, userId: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const { count } = await db.listShare.deleteMany({ where: { listId, userId, list: { userId: user.id } } });
+  if (!count) return failure("Não encontrado");
+  return done("Acesso removido");
+}
+
+/** Quem recebeu a lista deixa de vê-la. */
+export async function leaveList(listId: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const { count } = await db.listShare.deleteMany({ where: { listId, userId: user.id } });
+  if (!count) return failure("Lista não encontrada");
+  return done("Você saiu da lista");
 }

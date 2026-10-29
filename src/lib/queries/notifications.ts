@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { addDays, fromDbDate, timeToInstant, toDbDate, todayISO } from "@/lib/dates";
 import { bucketSize, getDashboardData } from "@/lib/queries/dashboard";
 import type { NotifyEvent } from "@/lib/notify";
+import { visibleActivity } from "@/lib/queries/sharing";
 import type { CurrentUser } from "@/lib/session";
 
 // Janela de eventos enviada ao navegador (ele consulta de novo a cada poucos minutos)
@@ -26,11 +27,21 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
   const [activities, items, dashboard] = await Promise.all([
     db.activity.findMany({
       where: {
-        userId: user.id,
+        ...visibleActivity(user.id),
         date: { gte: toDbDate(addDays(today, -1)), lte: toDbDate(addDays(today, 4)) },
         startTime: { not: null },
       },
-      select: { id: true, date: true, title: true, startTime: true, endTime: true, notifyBefore: true },
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        title: true,
+        startTime: true,
+        endTime: true,
+        notifyBefore: true,
+        // compartilhada comigo: vale a minha antecedência
+        shares: { where: { userId: user.id }, select: { notifyBefore: true } },
+      },
     }),
     db.item.findMany({
       where: {
@@ -56,7 +67,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
       at: at.toISOString(),
       url: "/diario",
       detail: a.endTime ? `${a.startTime}–${a.endTime}` : a.startTime!,
-      lead: a.notifyBefore,
+      lead: a.userId === user.id ? a.notifyBefore : (a.shares[0]?.notifyBefore ?? null),
     });
   }
 
