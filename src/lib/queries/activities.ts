@@ -22,6 +22,7 @@ type ActivityRow = {
   notes: string | null;
   startTime: string | null;
   endTime: string | null;
+  notifyBefore: number | null;
   tags: { id: string; name: string }[];
 };
 
@@ -33,6 +34,7 @@ export function toActivityView(a: ActivityRow) {
     notes: a.notes,
     startTime: a.startTime,
     endTime: a.endTime,
+    notifyBefore: a.notifyBefore,
     tags: a.tags.map((t) => t.name),
   };
 }

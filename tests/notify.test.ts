@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueNotifications, notificationText, type NotifyEvent } from "@/lib/notify";
+import { dueNotifications, formatLead, NO_NOTIFY, notificationText, type NotifyEvent } from "@/lib/notify";
 import { minutesNowInTz, timeToInstant } from "@/lib/dates";
 
 const at = "2026-10-28T17:00:00.000Z"; // 14:00 em São Paulo
@@ -62,5 +62,35 @@ describe("horários no fuso", () => {
 
   it("minutos do dia no fuso", () => {
     expect(minutesNowInTz("America/Sao_Paulo", new Date("2026-10-28T17:30:00Z"))).toBe(14 * 60 + 30);
+  });
+});
+
+describe("antecedência por tarefa", () => {
+  it("usa a da tarefa no lugar do padrão", () => {
+    const dayBefore = { ...event, lead: 1440 };
+    const due = dueNotifications([dayBefore], t("2026-10-27T17:30:00Z"), 10, none);
+    expect(due.map((d) => d.phase)).toEqual(["soon"]);
+    expect(notificationText(due[0], t("2026-10-27T17:30:00Z")).title).toBe("Em 1 dia: Reunião");
+  });
+
+  it("2 h antes mostra em horas", () => {
+    const due = dueNotifications([{ ...event, lead: 120 }], t("2026-10-28T15:00:00Z"), 10, none);
+    expect(notificationText(due[0], t("2026-10-28T15:00:00Z")).title).toBe("Em 2 h: Reunião");
+  });
+
+  it("só na hora: nada antes, avisa no horário", () => {
+    const onlyNow = { ...event, lead: 0 };
+    expect(dueNotifications([onlyNow], t("2026-10-28T16:55:00Z"), 10, none)).toEqual([]);
+    expect(dueNotifications([onlyNow], t("2026-10-28T17:00:30Z"), 10, none).map((d) => d.phase)).toEqual(["now"]);
+  });
+
+  it("não avisar: nenhum aviso", () => {
+    const off = { ...event, lead: NO_NOTIFY };
+    expect(dueNotifications([off], t("2026-10-28T16:55:00Z"), 10, none)).toEqual([]);
+    expect(dueNotifications([off], t("2026-10-28T17:00:30Z"), 10, none)).toEqual([]);
+  });
+
+  it("formatLead", () => {
+    expect([5, 60, 90, 1440, 2880].map(formatLead)).toEqual(["5 min", "1 h", "1 h 30 min", "1 dia", "2 dias"]);
   });
 });

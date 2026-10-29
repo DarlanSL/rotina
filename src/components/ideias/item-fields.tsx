@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/native-select";
 import { FormField } from "@/components/form-field";
+import { NotifyBeforeField } from "@/components/notifications/notify-before-select";
 import { ITEM_TYPE_LABEL, PRIORITY_LABEL } from "@/lib/labels";
 import { ITEM_TYPES, PRIORITIES } from "@/lib/validations";
 import type { ItemType, Priority } from "@/generated/prisma/enums";
@@ -45,6 +46,7 @@ export function ItemFields({
     priority?: Priority;
     projectId?: string | null;
     remindAt?: Date | null;
+    notifyBefore?: number | null;
   };
   showType?: boolean;
 }) {
@@ -102,15 +104,18 @@ export function ItemFields({
         </FormField>
       </div>
       {needsDate && (
-        <FormField label={type === "REMINDER" ? "Lembrar em" : "Prazo (opcional)"} htmlFor={`${prefix}-remind`}>
-          <Input
-            id={`${prefix}-remind`}
-            name="remindAtLocal"
-            type="datetime-local"
-            required={type === "REMINDER"}
-            defaultValue={toLocalInput(defaults?.remindAt)}
-          />
-        </FormField>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_12rem]">
+          <FormField label={type === "REMINDER" ? "Lembrar em" : "Prazo (opcional)"} htmlFor={`${prefix}-remind`}>
+            <Input
+              id={`${prefix}-remind`}
+              name="remindAtLocal"
+              type="datetime-local"
+              required={type === "REMINDER"}
+              defaultValue={toLocalInput(defaults?.remindAt)}
+            />
+          </FormField>
+          <NotifyBeforeField id={`${prefix}-notify`} defaultValue={defaults?.notifyBefore} />
+        </div>
       )}
       <FormField label="Detalhes" htmlFor={`${prefix}-content`}>
         <Textarea

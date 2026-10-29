@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isTimeBefore } from "@/lib/dates";
+import { NOTIFY_BEFORE_OPTIONS } from "@/lib/notify";
 
 // Campos de formulário vazios chegam como "" — tratamos como ausentes
 const optionalText = (max = 5000) =>
@@ -11,6 +12,16 @@ const optionalText = (max = 5000) =>
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 const optionalIsoDate = z.preprocess((v) => (v === "" ? undefined : v), isoDate.optional());
 const intField = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
+
+// antecedência do aviso: "" = padrão do aparelho
+const notifyBefore = z.preprocess(
+  (v) => (v === "" || v == null ? undefined : v),
+  z.coerce
+    .number()
+    .int()
+    .refine((n) => (NOTIFY_BEFORE_OPTIONS as readonly number[]).includes(n), "Antecedência inválida")
+    .optional(),
+);
 
 const optionalTime = z.preprocess(
   (v) => (v === "" ? undefined : v),
@@ -27,6 +38,7 @@ export const activitySchema = z
     notes: optionalText(),
     startTime: optionalTime,
     endTime: optionalTime,
+    notifyBefore,
     // "trabalho, saúde" → ["trabalho", "saúde"]
     tags: z.preprocess(
       (v) =>
@@ -83,6 +95,7 @@ export const itemSchema = z.object({
   projectId: optionalText(40),
   // o cliente envia ISO completo (já convertido do fuso do navegador)
   remindAt: z.preprocess((v) => (v === "" ? undefined : v), z.iso.datetime({ offset: true }).optional()),
+  notifyBefore,
 });
 
 export const projectSchema = z.object({

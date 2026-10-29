@@ -18,7 +18,7 @@ export async function createActivity(formData: FormData): Promise<ActionResult> 
   const user = await requireUser();
   const parsed = activitySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failure(firstError(parsed.error));
-  const { date, title, notes, startTime, endTime, tags } = parsed.data;
+  const { date, title, notes, startTime, endTime, notifyBefore, tags } = parsed.data;
 
   await db.activity.create({
     data: {
@@ -28,6 +28,7 @@ export async function createActivity(formData: FormData): Promise<ActionResult> 
       notes,
       startTime,
       endTime,
+      notifyBefore,
       tags: { connectOrCreate: tagsInput(user.id, tags) },
     },
   });
@@ -39,7 +40,7 @@ export async function updateActivity(id: string, formData: FormData): Promise<Ac
   const user = await requireUser();
   const parsed = activitySchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failure(firstError(parsed.error));
-  const { date, title, notes, startTime, endTime, tags } = parsed.data;
+  const { date, title, notes, startTime, endTime, notifyBefore, tags } = parsed.data;
 
   const existing = await db.activity.findFirst({ where: { id, userId: user.id }, select: { id: true } });
   if (!existing) return failure("Atividade não encontrada");
@@ -52,6 +53,7 @@ export async function updateActivity(id: string, formData: FormData): Promise<Ac
       notes: notes ?? null,
       startTime: startTime ?? null,
       endTime: endTime ?? null,
+      notifyBefore: notifyBefore ?? null,
       tags: { set: [], connectOrCreate: tagsInput(user.id, tags) },
     },
   });

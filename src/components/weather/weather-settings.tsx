@@ -85,6 +85,8 @@ export function WeatherSettings({ city, show }: { city: string | null; show: boo
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ex.: Campinas"
             autoComplete="off"
+            spellCheck={false}
+            autoCorrect="off"
             className="pl-8"
           />
         </div>

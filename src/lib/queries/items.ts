@@ -21,6 +21,7 @@ const itemSelect = {
   status: true,
   priority: true,
   remindAt: true,
+  notifyBefore: true,
   completedAt: true,
   createdAt: true,
   project: { select: { id: true, name: true, color: true } },

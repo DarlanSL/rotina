@@ -45,6 +45,7 @@ model Activity {
   notes     String?
   startTime String? // "HH:mm" (hora local, sem fuso)
   endTime   String? // "HH:mm"
+  notifyBefore Int? // minutos de antecedência do aviso; null = padrão do aparelho, -1 = não avisar
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -183,6 +184,7 @@ model Item {
   status      ItemStatus @default(OPEN)
   priority    Priority   @default(MEDIUM)
   remindAt    DateTime? // lembrete (data+hora) ou prazo de melhoria
+  notifyBefore Int? // minutos de antecedência do aviso; null = padrão do aparelho, -1 = não avisar
   completedAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt

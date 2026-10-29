@@ -7,7 +7,6 @@ import {
   ArrowUpRightIcon,
   BanIcon,
   CircleDotIcon,
-  ImagePlusIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RotateCcwIcon,
@@ -34,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAction } from "@/components/use-action";
 import { ConfirmDoneDialog } from "@/components/ideias/confirm-done-dialog";
-import { AttachmentGallery, useMediaPicker, useMediaUpload } from "@/components/ideias/attachments";
+import { AttachmentGallery, MediaMenuItems, useMediaPicker, useMediaUpload } from "@/components/ideias/attachments";
 import { MAX_ATTACHMENTS_PER_ITEM } from "@/lib/attachments";
 import {
   ItemFields,
@@ -48,6 +47,7 @@ import {
   updateItem,
 } from "@/app/(app)/ideias/actions";
 import { formatDateTimeBR } from "@/lib/dates";
+import { notifyBeforeLabel } from "@/lib/notify";
 import {
   ITEM_STATUS_LABEL,
   ITEM_TYPE_LABEL,
@@ -135,7 +135,7 @@ export function ItemCard({
           </p>
         )}
         {picker.input}
-        <AttachmentGallery attachments={item.attachments} uploads={uploads} onAdd={picker.open} />
+        <AttachmentGallery attachments={item.attachments} uploads={uploads} picker={picker} />
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
           {showType && (
@@ -168,6 +168,9 @@ export function ItemCard({
             >
               <AlarmClockIcon className="size-3" />
               {formatDateTimeBR(new Date(item.remindAt), timezone)}
+              {item.notifyBefore !== null && !done && (
+                <span className="text-muted-foreground">· {notifyBeforeLabel(item.notifyBefore).toLowerCase()}</span>
+              )}
             </span>
           )}
           {showProject && item.project && (
@@ -205,11 +208,7 @@ export function ItemCard({
           <DropdownMenuItem onClick={() => setEditing(true)}>
             <PencilIcon /> Editar
           </DropdownMenuItem>
-          {canAttach && (
-            <DropdownMenuItem onClick={picker.open}>
-              <ImagePlusIcon /> Adicionar foto ou vídeo
-            </DropdownMenuItem>
-          )}
+          {canAttach && <MediaMenuItems picker={picker} />}
           {item.status === "OPEN" && (
             <DropdownMenuItem
               onClick={() => run(() => setItemStatus(item.id, "IN_PROGRESS"))}
@@ -279,6 +278,7 @@ export function ItemCard({
                 priority: item.priority,
                 projectId: item.project?.id,
                 remindAt: item.remindAt,
+                notifyBefore: item.notifyBefore,
               }}
             />
             <p className="text-xs text-muted-foreground">

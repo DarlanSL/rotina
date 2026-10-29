@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/native-select";
 import { useAction } from "@/components/use-action";
 import { ItemFields, withRemindAtIso, type ProjectOption } from "@/components/ideias/item-fields";
-import { useMediaPicker, useMediaUpload } from "@/components/ideias/attachments";
+import { MediaMenu, useMediaPicker, useMediaUpload } from "@/components/ideias/attachments";
 import { createItem } from "@/app/(app)/ideias/actions";
 import { ITEM_TYPE_LABEL } from "@/lib/labels";
 import { ITEM_TYPES } from "@/lib/validations";
@@ -69,9 +69,16 @@ export function QuickCapture({
             showType={!lockType}
           />
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" className="mr-auto" onClick={picker.open}>
-              <ImagePlusIcon /> Foto ou vídeo
-            </Button>
+            <div className="mr-auto">
+              <MediaMenu
+                picker={picker}
+                trigger={
+                  <Button type="button" variant="ghost">
+                    <ImagePlusIcon /> Foto ou vídeo
+                  </Button>
+                }
+              />
+            </div>
             {type !== "REMINDER" && (
               <Button type="button" variant="ghost" onClick={() => setExpanded(false)}>
                 Menos opções
@@ -116,9 +123,15 @@ export function QuickCapture({
             </NativeSelect>
           )}
           <input type="hidden" name="projectId" value={projectId ?? ""} />
-          <Button type="button" variant="ghost" size="icon" aria-label="Adicionar foto ou vídeo" onClick={picker.open}>
-            <ImagePlusIcon />
-          </Button>
+          <MediaMenu
+            picker={picker}
+            align="end"
+            trigger={
+              <Button type="button" variant="ghost" size="icon" aria-label="Adicionar foto ou vídeo">
+                <ImagePlusIcon />
+              </Button>
+            }
+          />
           <Button type="button" variant="ghost" size="icon" aria-label="Mais opções" onClick={() => setExpanded(true)}>
             <ChevronDownIcon />
           </Button>

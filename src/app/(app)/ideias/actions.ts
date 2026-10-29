@@ -34,7 +34,7 @@ export async function updateItem(id: string, formData: FormData): Promise<Action
   const user = await requireUser();
   const parsed = itemSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failure(firstError(parsed.error));
-  const { remindAt, projectId, content, ...data } = parsed.data;
+  const { remindAt, projectId, content, notifyBefore, ...data } = parsed.data;
   if (!(await ownsProject(user.id, projectId))) return failure("Projeto inválido");
 
   const { count } = await db.item.updateMany({
@@ -44,6 +44,7 @@ export async function updateItem(id: string, formData: FormData): Promise<Action
       content: content ?? null,
       projectId: projectId ?? null,
       remindAt: remindAt ? new Date(remindAt) : null,
+      notifyBefore: notifyBefore ?? null,
     },
   });
   if (!count) return failure("Item não encontrado");

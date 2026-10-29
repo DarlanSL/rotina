@@ -1,10 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, ImagePlusIcon, PlayIcon, Trash2Icon } from "lucide-react";
+import { cloneElement, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
+import {
+  CameraIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ImageIcon,
+  ImagePlusIcon,
+  PlayIcon,
+  Trash2Icon,
+  VideoIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAction } from "@/components/use-action";
 import { attachMedia, deleteAttachment } from "@/app/(app)/ideias/actions";
 import { prepareImage, uploadMedia } from "@/lib/upload-client";
@@ -56,25 +66,91 @@ export function useMediaUpload() {
   return { uploads, uploadFiles, uploading: uploads.length > 0 };
 }
 
-/** Seletor de arquivos escondido (no celular oferece câmera e galeria): renderize `input` e chame `open`. */
+/** Seletores de arquivo escondidos: galeria, câmera (foto) e câmera (vídeo). Renderize `input` e chame um dos `open*`. */
 export function useMediaPicker(onFiles: (files: File[]) => void) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length) onFiles(files);
+  };
   const input = (
-    <input
-      ref={inputRef}
-      type="file"
-      accept={ACCEPT_MEDIA}
-      multiple
-      hidden
-      data-testid="media-input"
-      onChange={(e) => {
-        const files = Array.from(e.target.files ?? []);
-        e.target.value = "";
-        if (files.length) onFiles(files);
-      }}
-    />
+    <>
+      <input ref={galleryRef} type="file" accept={ACCEPT_MEDIA} multiple hidden data-testid="media-input" onChange={onChange} />
+      {/* capture abre direto a câmera traseira no celular */}
+      <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden data-testid="camera-photo" onChange={onChange} />
+      <input ref={videoRef} type="file" accept="video/*" capture="environment" hidden data-testid="camera-video" onChange={onChange} />
+    </>
   );
-  return { input, open: () => inputRef.current?.click() };
+  return {
+    input,
+    open: () => galleryRef.current?.click(),
+    openCamera: () => photoRef.current?.click(),
+    openVideo: () => videoRef.current?.click(),
+  };
+}
+
+export type MediaPicker = ReturnType<typeof useMediaPicker>;
+
+const COARSE = "(pointer: coarse)";
+function subscribeCoarse(onChange: () => void) {
+  const mq = window.matchMedia(COARSE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/** Tela de toque (celular/tablet): só nela a câmera abre direto; no computador vira seletor de arquivo. */
+function useHasCamera() {
+  return useSyncExternalStore(subscribeCoarse, () => window.matchMedia(COARSE).matches, () => false);
+}
+
+/** Itens "Tirar foto / Gravar vídeo / Da galeria" para um menu já existente. */
+export function MediaMenuItems({ picker }: { picker: MediaPicker }) {
+  const hasCamera = useHasCamera();
+  if (!hasCamera) {
+    return (
+      <DropdownMenuItem onClick={picker.open}>
+        <ImagePlusIcon /> Adicionar foto ou vídeo
+      </DropdownMenuItem>
+    );
+  }
+  return (
+    <>
+      <DropdownMenuItem onClick={picker.openCamera}>
+        <CameraIcon /> Tirar foto
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={picker.openVideo}>
+        <VideoIcon /> Gravar vídeo
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={picker.open}>
+        <ImageIcon /> Foto ou vídeo da galeria
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+/** Botão de anexar: no celular abre um menu (câmera ou galeria); no computador, direto o seletor de arquivos. */
+export function MediaMenu({
+  picker,
+  trigger,
+  align = "start",
+}: {
+  picker: MediaPicker;
+  trigger: ReactElement<{ onClick?: () => void }>;
+  align?: "start" | "end";
+}) {
+  const hasCamera = useHasCamera();
+  if (!hasCamera) return cloneElement(trigger, { onClick: picker.open });
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={trigger} />
+      <DropdownMenuContent align={align} className="w-52">
+        <MediaMenuItems picker={picker} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function Thumb({ attachment }: { attachment: AttachmentView }) {
@@ -96,15 +172,16 @@ function Thumb({ attachment }: { attachment: AttachmentView }) {
 export function AttachmentGallery({
   attachments,
   uploads = [],
-  onAdd,
+  picker,
 }: {
   attachments: AttachmentView[];
   uploads?: Upload[];
-  onAdd?: () => void;
+  /** Se informado, mostra o "+" para anexar mais */
+  picker?: MediaPicker;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   if (attachments.length === 0 && uploads.length === 0) return null;
-  const canAdd = onAdd && attachments.length + uploads.length < MAX_ATTACHMENTS_PER_ITEM;
+  const canAdd = picker && attachments.length + uploads.length < MAX_ATTACHMENTS_PER_ITEM;
 
   return (
     <>
@@ -135,14 +212,18 @@ export function AttachmentGallery({
         ))}
         {canAdd && attachments.length > 0 && (
           <li>
-            <button
-              type="button"
-              onClick={onAdd}
-              aria-label="Adicionar foto ou vídeo"
-              className="flex size-16 items-center justify-center rounded-lg border border-dashed text-muted-foreground hover:bg-muted sm:size-20"
-            >
-              <ImagePlusIcon className="size-5" />
-            </button>
+            <MediaMenu
+              picker={picker}
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Adicionar foto ou vídeo"
+                  className="flex size-16 items-center justify-center rounded-lg border border-dashed text-muted-foreground hover:bg-muted sm:size-20"
+                >
+                  <ImagePlusIcon className="size-5" />
+                </button>
+              }
+            />
           </li>
         )}
       </ul>

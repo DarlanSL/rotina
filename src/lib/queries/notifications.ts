@@ -7,7 +7,8 @@ import type { CurrentUser } from "@/lib/session";
 
 // Janela de eventos enviada ao navegador (ele consulta de novo a cada poucos minutos)
 const LOOKBACK_MS = 60 * 60_000;
-const LOOKAHEAD_MS = 36 * 60 * 60_000;
+// cobre o maior aviso antecipado (2 dias) com folga
+const LOOKAHEAD_MS = 3 * 24 * 60 * 60_000;
 
 export type NotificationFeed = {
   today: string;
@@ -26,10 +27,10 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
     db.activity.findMany({
       where: {
         userId: user.id,
-        date: { gte: toDbDate(addDays(today, -1)), lte: toDbDate(addDays(today, 2)) },
+        date: { gte: toDbDate(addDays(today, -1)), lte: toDbDate(addDays(today, 4)) },
         startTime: { not: null },
       },
-      select: { id: true, date: true, title: true, startTime: true, endTime: true },
+      select: { id: true, date: true, title: true, startTime: true, endTime: true, notifyBefore: true },
     }),
     db.item.findMany({
       where: {
@@ -38,7 +39,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
         status: { in: ["OPEN", "IN_PROGRESS"] },
         remindAt: { gte: from, lte: to },
       },
-      select: { id: true, type: true, title: true, remindAt: true, project: { select: { id: true, name: true } } },
+      select: { id: true, type: true, title: true, remindAt: true, notifyBefore: true, project: { select: { id: true, name: true } } },
     }),
     getDashboardData(user),
   ]);
@@ -55,6 +56,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
       at: at.toISOString(),
       url: "/diario",
       detail: a.endTime ? `${a.startTime}–${a.endTime}` : a.startTime!,
+      lead: a.notifyBefore,
     });
   }
 
@@ -66,6 +68,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
       at: i.remindAt!.toISOString(),
       url: i.project ? `/projetos/${i.project.id}` : `/ideias?tipo=${i.type}`,
       detail: i.project?.name,
+      lead: i.notifyBefore,
     });
   }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
+import { NotifyBeforeField } from "@/components/notifications/notify-before-select";
 import { useAction } from "@/components/use-action";
 import { createActivity, updateActivity } from "@/app/(app)/diario/actions";
 import type { ActivityView } from "@/lib/queries/activities";
@@ -99,6 +100,7 @@ export function ActivityForm({
             placeholder="ex: trabalho, saúde"
             defaultValue={activity?.tags.join(", ")}
             autoComplete="off"
+            autoCapitalize="none"
           />
           <datalist id={`${prefix}-tag-options`}>
             {knownTags.map((t) => (
@@ -106,6 +108,7 @@ export function ActivityForm({
             ))}
           </datalist>
         </FormField>
+        <NotifyBeforeField id={`${prefix}-notify`} defaultValue={activity?.notifyBefore} className="w-44" />
         <Button type="submit" disabled={pending} className="h-8">
           {activity ? "Salvar" : "Registrar"}
         </Button>

@@ -12,6 +12,7 @@ const activity = (id: string, date: string, startTime: string | null): ActivityV
   notes: null,
   startTime,
   endTime: null,
+  notifyBefore: null,
   tags: [],
 });
 const item = (id: string): ScheduledItem => ({
