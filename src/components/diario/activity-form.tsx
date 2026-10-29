@@ -56,9 +56,9 @@ export function ActivityForm({
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_10rem_7rem_7rem]">
-        <FormField label="Atividade" htmlFor={`${prefix}-title`} className="col-span-2 sm:col-span-1">
+    <form ref={formRef} onSubmit={onSubmit} className="@container grid gap-3">
+      <div className="grid grid-cols-2 gap-3 @md:grid-cols-[1fr_7rem_7rem] @3xl:grid-cols-[1fr_10rem_7rem_7rem]">
+        <FormField label="Atividade" htmlFor={`${prefix}-title`} className="col-span-full @3xl:col-span-1">
           <Input
             id={`${prefix}-title`}
             name="title"
@@ -69,7 +69,7 @@ export function ActivityForm({
             autoComplete="off"
           />
         </FormField>
-        <FormField label="Data" htmlFor={`${prefix}-date`} className="col-span-2 sm:col-span-1">
+        <FormField label="Data" htmlFor={`${prefix}-date`} className="col-span-2 @md:col-span-1">
           <Input id={`${prefix}-date`} name="date" type="date" required defaultValue={activity?.date ?? today} />
         </FormField>
         <FormField label="Das" htmlFor={`${prefix}-start`}>
@@ -108,7 +108,7 @@ export function ActivityForm({
             ))}
           </datalist>
         </FormField>
-        <NotifyBeforeField id={`${prefix}-notify`} defaultValue={activity?.notifyBefore} className="w-44" />
+        <NotifyBeforeField id={`${prefix}-notify`} defaultValue={activity?.notifyBefore} className="w-52" />
         <Button type="submit" disabled={pending} className="h-8">
           {activity ? "Salvar" : "Registrar"}
         </Button>
