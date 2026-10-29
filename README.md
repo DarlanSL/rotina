@@ -58,6 +58,13 @@ npm run dev                   # http://localhost:3000 → entre como demo / demo
    - `AUTH_SIGNUP`: opcional; use `"false"` para fechar o cadastro.
 3. O script `vercel-build` roda `prisma migrate deploy` antes do `next build`, então as migrations sobem a cada deploy.
 4. Em Settings → Functions, escolha a região **São Paulo (gru1)**, para ficar perto do banco.
+5. **Fotos e vídeos**: em Storage → Create → **Blob**, crie um store com acesso **Private** e conecte ao projeto. A Vercel cria `BLOB_STORE_ID` e `BLOB_WEBHOOK_PUBLIC_KEY` sozinha e autentica o app automaticamente (OIDC). Faça um novo deploy. Sem o store, a tela avisa que os anexos não estão configurados.
+
+### Anexos (fotos e vídeos)
+- Ficam no Vercel Blob **privado**. O app só entrega o arquivo ao dono, com um link assinado de 1 hora.
+- O envio vai do navegador direto ao Blob, então não esbarra no limite de 4,5 MB das funções. Fotos são reduzidas para até 2048px antes do envio.
+- Limites: 10 anexos por item, fotos até 15 MB e vídeos até 100 MB.
+- Fora da Vercel, dá para usar `BLOB_READ_WRITE_TOKEN`. Em desenvolvimento, sem nenhum dos dois, os arquivos vão para a pasta `.uploads/`, que é ignorada pelo git.
 
 ## Organização
 

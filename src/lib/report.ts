@@ -22,7 +22,62 @@ export type ReportData = {
   routinesDone: { id: string; date: string; title: string }[];
   itemsDone: { id: string; date: string; title: string; typeLabel: string }[];
   postponements: { id: string; title: string; from: string; to: string; reason: string }[];
+  /** Tags "pessoais": atividades com elas já vêm fora da versão enviada */
+  hiddenTags: string[];
 };
+
+type Summary = Pick<ReportData, "days" | "totals" | "byTag">;
+
+/** Agrupa atividades (já ordenadas) por dia e calcula horas, totais e resumo por tag. */
+export function summarizeActivities(activities: ReportActivity[]): Summary {
+  const days = new Map<string, ReportActivity[]>();
+  const tagStats = new Map<string, { count: number; minutes: number }>();
+  let minutes = 0;
+  for (const a of activities) {
+    days.set(a.date, [...(days.get(a.date) ?? []), a]);
+    minutes += a.minutes;
+    for (const tag of a.tags) {
+      const s = tagStats.get(tag) ?? { count: 0, minutes: 0 };
+      tagStats.set(tag, { count: s.count + 1, minutes: s.minutes + a.minutes });
+    }
+  }
+  return {
+    days: [...days].map(([date, list]) => ({ date, activities: list, minutes: list.reduce((sum, a) => sum + a.minutes, 0) })),
+    totals: { activities: activities.length, minutes, days: days.size },
+    byTag: [...tagStats]
+      .map(([tag, s]) => ({ tag, ...s }))
+      .sort((a, b) => b.minutes - a.minutes || b.count - a.count || a.tag.localeCompare(b.tag)),
+  };
+}
+
+/** Chave de cada linha do relatório, para marcar o que sai ou não na versão enviada. */
+export const reportKey = {
+  activity: (id: string) => `act:${id}`,
+  routine: (id: string) => `rt:${id}`,
+  item: (id: string) => `item:${id}`,
+  postponement: (id: string) => `pp:${id}`,
+};
+
+/** O que já vem desmarcado: atividades com alguma tag pessoal. */
+export function defaultExcluded(data: ReportData): Set<string> {
+  const hidden = new Set(data.hiddenTags);
+  return new Set(
+    data.days.flatMap((d) => d.activities.filter((a) => a.tags.some((t) => hidden.has(t))).map((a) => reportKey.activity(a.id))),
+  );
+}
+
+/** Versão enviada: sem as linhas desmarcadas, com horas e totais recalculados. */
+export function filterReport(data: ReportData, excluded: Set<string>): ReportData {
+  if (excluded.size === 0) return data;
+  const activities = data.days.flatMap((d) => d.activities).filter((a) => !excluded.has(reportKey.activity(a.id)));
+  return {
+    ...data,
+    ...summarizeActivities(activities),
+    routinesDone: data.routinesDone.filter((r) => !excluded.has(reportKey.routine(r.id))),
+    itemsDone: data.itemsDone.filter((i) => !excluded.has(reportKey.item(i.id))),
+    postponements: data.postponements.filter((p) => !excluded.has(reportKey.postponement(p.id))),
+  };
+}
 
 export function periodLabel(from: string, to: string): string {
   return from === to ? formatDateBR(from) : `${formatDateBR(from)} a ${formatDateBR(to)}`;

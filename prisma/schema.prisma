@@ -10,22 +10,23 @@ datasource db {
 // ---------- Usuários ----------
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
+  id           String   @id @default(cuid())
+  name         String?
   /// Login: nome de usuário (minúsculo) + senha com hash scrypt
-  username      String    @unique
-  passwordHash  String?
-  email         String?   @unique
-  timezone      String    @default("America/Sao_Paulo")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  username     String   @unique
+  passwordHash String?
+  email        String?  @unique
+  timezone     String   @default("America/Sao_Paulo")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  activities Activity[]
-  tags       Tag[]
-  routines   Routine[]
-  documents  Document[]
-  projects   Project[]
-  items      Item[]
+  activities  Activity[]
+  tags        Tag[]
+  routines    Routine[]
+  documents   Document[]
+  projects    Project[]
+  items       Item[]
+  attachments Attachment[]
 }
 
 // ---------- Diário de Atividades ----------
@@ -48,10 +49,12 @@ model Activity {
 }
 
 model Tag {
-  id     String  @id @default(cuid())
-  userId String
-  name   String
-  color  String?
+  id           String  @id @default(cuid())
+  userId       String
+  name         String
+  color        String?
+  /// "Pessoal": atividades com esta tag não saem no relatório enviado
+  reportHidden Boolean @default(false)
 
   activities Activity[]
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -178,9 +181,28 @@ model Item {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
 
   @@index([userId, type, status])
   @@index([userId, remindAt])
+}
+
+/// Foto ou vídeo anexado a uma ideia, anotação, lembrete ou melhoria.
+/// O arquivo fica no armazenamento (Vercel Blob privado, ou .uploads/ em dev); aqui só o caminho.
+model Attachment {
+  id          String   @id @default(cuid())
+  userId      String
+  itemId      String
+  pathname    String   @unique
+  name        String
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
 }

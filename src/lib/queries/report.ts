@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { addDays, durationMinutes, fromDbDate, isoDateInTz, startOfDayInTz, toDbDate } from "@/lib/dates";
 import { ITEM_TYPE_LABEL } from "@/lib/labels";
-import type { ReportActivity, ReportData } from "@/lib/report";
+import { summarizeActivities, type ReportActivity, type ReportData } from "@/lib/report";
 import type { CurrentUser } from "@/lib/session";
 
 export async function getReport(user: CurrentUser, from: string, to: string): Promise<ReportData> {
@@ -10,7 +10,7 @@ export async function getReport(user: CurrentUser, from: string, to: string): Pr
   const rangeStart = startOfDayInTz(from, tz);
   const rangeEnd = startOfDayInTz(addDays(to, 1), tz);
 
-  const [activities, completions, items, postponements] = await Promise.all([
+  const [activities, completions, items, postponements, hiddenTags] = await Promise.all([
     db.activity.findMany({
       where: { userId: user.id, date: { gte: toDbDate(from), lte: toDbDate(to) } },
       // relatório lê de cima para baixo: dias e horários em ordem crescente
@@ -32,45 +32,25 @@ export async function getReport(user: CurrentUser, from: string, to: string): Pr
       orderBy: { createdAt: "asc" },
       select: { id: true, fromDate: true, toDate: true, reason: true, routine: { select: { title: true } } },
     }),
+    db.tag.findMany({ where: { userId: user.id, reportHidden: true }, select: { name: true }, orderBy: { name: "asc" } }),
   ]);
 
-  const days = new Map<string, ReportActivity[]>();
-  const tagStats = new Map<string, { count: number; minutes: number }>();
-  let totalMinutes = 0;
-
-  for (const a of activities) {
-    const minutes = a.startTime && a.endTime ? durationMinutes(a.startTime, a.endTime) : 0;
-    const view: ReportActivity = {
-      id: a.id,
-      date: fromDbDate(a.date),
-      title: a.title,
-      notes: a.notes,
-      startTime: a.startTime,
-      endTime: a.endTime,
-      minutes,
-      tags: a.tags.map((t) => t.name),
-    };
-    days.set(view.date, [...(days.get(view.date) ?? []), view]);
-    totalMinutes += minutes;
-    for (const tag of view.tags) {
-      const s = tagStats.get(tag) ?? { count: 0, minutes: 0 };
-      tagStats.set(tag, { count: s.count + 1, minutes: s.minutes + minutes });
-    }
-  }
+  const views: ReportActivity[] = activities.map((a) => ({
+    id: a.id,
+    date: fromDbDate(a.date),
+    title: a.title,
+    notes: a.notes,
+    startTime: a.startTime,
+    endTime: a.endTime,
+    minutes: a.startTime && a.endTime ? durationMinutes(a.startTime, a.endTime) : 0,
+    tags: a.tags.map((t) => t.name),
+  }));
 
   return {
     from,
     to,
     userName: user.name,
-    days: [...days].map(([date, list]) => ({
-      date,
-      activities: list,
-      minutes: list.reduce((sum, a) => sum + a.minutes, 0),
-    })),
-    totals: { activities: activities.length, minutes: totalMinutes, days: days.size },
-    byTag: [...tagStats]
-      .map(([tag, s]) => ({ tag, ...s }))
-      .sort((a, b) => b.minutes - a.minutes || b.count - a.count || a.tag.localeCompare(b.tag)),
+    ...summarizeActivities(views),
     routinesDone: completions.map((c) => ({ id: c.id, date: fromDbDate(c.completedAt), title: c.routine.title })),
     itemsDone: items.map((i) => ({
       id: i.id,
@@ -85,5 +65,6 @@ export async function getReport(user: CurrentUser, from: string, to: string): Pr
       to: fromDbDate(p.toDate),
       reason: p.reason,
     })),
+    hiddenTags: hiddenTags.map((t) => t.name),
   };
 }

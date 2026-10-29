@@ -43,3 +43,6 @@ next-env.d.ts
 
 # prisma client gerado
 /src/generated
+
+# anexos salvos localmente (sem BLOB_READ_WRITE_TOKEN)
+/.uploads

@@ -4,12 +4,11 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/form-field";
 import { FilterChips } from "@/components/filter-chips";
 import { PageHeader } from "@/components/page-header";
-import { ReportView } from "@/components/relatorios/report-view";
-import { ShareBar } from "@/components/relatorios/share-bar";
+import { ReportComposer } from "@/components/relatorios/report-composer";
 import { requireUser } from "@/lib/session";
 import { getReport } from "@/lib/queries/report";
 import { todayISO } from "@/lib/dates";
-import { buildReportCsv, buildReportText, periodLabel, reportTitle } from "@/lib/report";
+import { periodLabel, reportTitle } from "@/lib/report";
 import { parsePeriod, PRESETS } from "@/lib/report-period";
 
 export const metadata: Metadata = { title: "Relatórios" };
@@ -53,13 +52,9 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
             Gerar relatório
           </Button>
         </form>
-
-        <div className="mb-4">
-          <ShareBar title={title} text={buildReportText(data)} csv={buildReportCsv(data)} fileBase={fileBase} />
-        </div>
       </div>
 
-      <ReportView data={data} generatedAt={generatedAt} />
+      <ReportComposer data={data} title={title} fileBase={fileBase} generatedAt={generatedAt} />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReportCsv, buildReportText, type ReportData } from "@/lib/report";
+import { buildReportCsv, buildReportText, defaultExcluded, filterReport, reportKey, type ReportData } from "@/lib/report";
 import { endOfPreviousMonthISO, startOfMonthISO, startOfWeekISO } from "@/lib/dates";
 import { parsePeriod } from "@/lib/report-period";
 
@@ -43,6 +43,7 @@ const base: ReportData = {
   routinesDone: [{ id: "r", date: "2026-10-28", title: "Regar plantas" }],
   itemsDone: [],
   postponements: [{ id: "p", title: "Extintores", from: "2026-10-23", to: "2026-10-31", reason: "Sem agenda" }],
+  hiddenTags: [],
 };
 
 describe("buildReportText", () => {
@@ -124,5 +125,41 @@ describe("parsePeriod", () => {
   it("limita a 1 ano e ignora lixo", () => {
     expect(parsePeriod({ de: "2020-01-01", ate: today }, today).from).toBe("2025-10-28");
     expect(parsePeriod({ de: "abc" }, today).preset).toBe("hoje");
+  });
+});
+
+describe("versão enviada (filterReport)", () => {
+  it("sem nada desmarcado, é o próprio relatório", () => {
+    expect(filterReport(base, new Set())).toBe(base);
+  });
+
+  it("tira a atividade e recalcula horas, totais e tags", () => {
+    const r = filterReport(base, new Set([reportKey.activity("1")]));
+    expect(r.days[0].activities.map((a) => a.id)).toEqual(["2"]);
+    expect(r.days[0].minutes).toBe(90);
+    expect(r.totals).toEqual({ activities: 1, minutes: 90, days: 1 });
+    expect(r.byTag).toEqual([{ tag: "trabalho", count: 1, minutes: 90 }]);
+    expect(buildReportText(r)).not.toContain("Caminhada");
+    expect(buildReportCsv(r)).not.toContain("Caminhada");
+  });
+
+  it("dia sem nenhuma atividade marcada some", () => {
+    const r = filterReport(base, new Set([reportKey.activity("1"), reportKey.activity("2")]));
+    expect(r.days).toEqual([]);
+    expect(r.totals).toEqual({ activities: 0, minutes: 0, days: 0 });
+  });
+
+  it("revisões e prorrogações também podem sair", () => {
+    const r = filterReport(base, new Set([reportKey.routine("r"), reportKey.postponement("p")]));
+    expect(r.routinesDone).toEqual([]);
+    expect(r.postponements).toEqual([]);
+    expect(buildReportText(r)).not.toContain("Regar plantas");
+  });
+});
+
+describe("defaultExcluded", () => {
+  it("atividades com tag pessoal já vêm desmarcadas", () => {
+    expect([...defaultExcluded({ ...base, hiddenTags: ["saúde"] })]).toEqual([reportKey.activity("1")]);
+    expect(defaultExcluded(base).size).toBe(0);
   });
 });

@@ -24,6 +24,7 @@ const itemSelect = {
   completedAt: true,
   createdAt: true,
   project: { select: { id: true, name: true, color: true } },
+  attachments: { select: { id: true, name: true, contentType: true }, orderBy: { createdAt: "asc" } },
 } satisfies Prisma.ItemSelect;
 
 export type ItemView = Prisma.ItemGetPayload<{ select: typeof itemSelect }> & { overdue: boolean };

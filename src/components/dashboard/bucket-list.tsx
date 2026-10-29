@@ -85,7 +85,7 @@ export function ItemRow({ item: i, timezone, showDue }: { item: ScheduledItem } 
           </span>
         ) : undefined
       }
-      actions={<ItemDoneButton itemId={i.id} />}
+      actions={<ItemDoneButton itemId={i.id} title={i.title} />}
     />
   );
 }

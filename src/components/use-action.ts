@@ -8,7 +8,7 @@ import type { ActionResult } from "@/lib/action-result";
 export function useAction() {
   const [pending, startTransition] = useTransition();
 
-  function run(action: () => Promise<ActionResult>, onSuccess?: () => void) {
+  function run(action: () => Promise<ActionResult>, onSuccess?: (result: Extract<ActionResult, { ok: true }>) => void) {
     startTransition(async () => {
       try {
         const result = await action();
@@ -16,7 +16,7 @@ export function useAction() {
           if (result.message) toast.success(result.message);
           // avisa o motor de notificações para recarregar os horários
           window.dispatchEvent(new Event("rotina:data-changed"));
-          onSuccess?.();
+          onSuccess?.(result);
         } else {
           toast.error(result.error);
         }

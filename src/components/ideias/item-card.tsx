@@ -7,6 +7,7 @@ import {
   ArrowUpRightIcon,
   BanIcon,
   CircleDotIcon,
+  ImagePlusIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RotateCcwIcon,
@@ -14,7 +15,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +33,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAction } from "@/components/use-action";
-import { ItemFields, withRemindAtIso, type ProjectOption } from "@/components/ideias/item-fields";
-import { deleteItem, promoteToImprovement, setItemStatus, updateItem } from "@/app/(app)/ideias/actions";
+import { ConfirmDoneDialog } from "@/components/ideias/confirm-done-dialog";
+import { AttachmentGallery, useMediaPicker, useMediaUpload } from "@/components/ideias/attachments";
+import { MAX_ATTACHMENTS_PER_ITEM } from "@/lib/attachments";
+import {
+  ItemFields,
+  withRemindAtIso,
+  type ProjectOption,
+} from "@/components/ideias/item-fields";
+import {
+  deleteItem,
+  promoteToImprovement,
+  setItemStatus,
+  updateItem,
+} from "@/app/(app)/ideias/actions";
 import { formatDateTimeBR } from "@/lib/dates";
-import { ITEM_STATUS_LABEL, ITEM_TYPE_LABEL, PRIORITY_LABEL, projectColorClass } from "@/lib/labels";
+import {
+  ITEM_STATUS_LABEL,
+  ITEM_TYPE_LABEL,
+  PRIORITY_LABEL,
+  projectColorClass,
+} from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { ItemView } from "@/lib/queries/items";
 import type { ItemType } from "@/generated/prisma/enums";
@@ -57,8 +81,12 @@ export function ItemCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDone, setConfirmDone] = useState(false);
   const [editType, setEditType] = useState<ItemType>(item.type);
   const { pending, run } = useAction();
+  const { uploads, uploadFiles } = useMediaUpload();
+  const canAttach = item.attachments.length + uploads.length < MAX_ATTACHMENTS_PER_ITEM;
+  const picker = useMediaPicker((files) => uploadFiles(item.id, files, item.attachments.length + uploads.length));
 
   const done = item.status === "DONE";
   const discarded = item.status === "DISCARDED";
@@ -85,25 +113,46 @@ export function ItemCard({
         checked={done}
         disabled={pending || discarded}
         aria-label={done ? "Marcar como pendente" : "Marcar como realizado"}
-        onCheckedChange={(checked) => run(() => setItemStatus(item.id, checked ? "DONE" : "OPEN"))}
+        onCheckedChange={(checked) =>
+          checked
+            ? setConfirmDone(true)
+            : run(() => setItemStatus(item.id, "OPEN"))
+        }
       />
 
       <div className="min-w-0 flex-1">
-        <p className={cn("font-medium wrap-break-word", (done || discarded) && "text-muted-foreground line-through")}>
+        <p
+          className={cn(
+            "font-medium wrap-break-word",
+            (done || discarded) && "text-muted-foreground line-through",
+          )}
+        >
           {item.title}
         </p>
         {item.content && (
-          <p className="mt-0.5 line-clamp-3 text-sm whitespace-pre-line text-muted-foreground">{item.content}</p>
+          <p className="mt-0.5 line-clamp-3 text-sm whitespace-pre-line text-muted-foreground">
+            {item.content}
+          </p>
         )}
+        {picker.input}
+        <AttachmentGallery attachments={item.attachments} uploads={uploads} onAdd={picker.open} />
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-          {showType && <span className="rounded-full bg-muted px-2 py-0.5">{ITEM_TYPE_LABEL[item.type].singular}</span>}
+          {showType && (
+            <span className="rounded-full bg-muted px-2 py-0.5">
+              {ITEM_TYPE_LABEL[item.type].singular}
+            </span>
+          )}
           {item.status === "IN_PROGRESS" && (
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">
               Em andamento
             </span>
           )}
-          {discarded && <span className="rounded-full bg-muted px-2 py-0.5">Descartado</span>}
+          {discarded && (
+            <span className="rounded-full bg-muted px-2 py-0.5">
+              Descartado
+            </span>
+          )}
           {item.priority === "HIGH" && !done && (
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-800 dark:bg-red-500/15 dark:text-red-300">
               Prioridade alta
@@ -113,7 +162,8 @@ export function ItemCard({
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5",
-                item.overdue && "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",
+                item.overdue &&
+                  "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300",
               )}
             >
               <AlarmClockIcon className="size-3" />
@@ -125,13 +175,19 @@ export function ItemCard({
               href={`/projetos/${item.project.id}`}
               className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 hover:bg-muted"
             >
-              <span className={cn("size-1.5 rounded-full", projectColorClass(item.project.color))} />
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  projectColorClass(item.project.color),
+                )}
+              />
               {item.project.name}
             </Link>
           )}
           {done && item.completedAt && (
             <span className="text-muted-foreground">
-              Realizado em {formatDateTimeBR(new Date(item.completedAt), timezone)}
+              Realizado em{" "}
+              {formatDateTimeBR(new Date(item.completedAt), timezone)}
             </span>
           )}
         </div>
@@ -149,18 +205,29 @@ export function ItemCard({
           <DropdownMenuItem onClick={() => setEditing(true)}>
             <PencilIcon /> Editar
           </DropdownMenuItem>
+          {canAttach && (
+            <DropdownMenuItem onClick={picker.open}>
+              <ImagePlusIcon /> Adicionar foto ou vídeo
+            </DropdownMenuItem>
+          )}
           {item.status === "OPEN" && (
-            <DropdownMenuItem onClick={() => run(() => setItemStatus(item.id, "IN_PROGRESS"))}>
+            <DropdownMenuItem
+              onClick={() => run(() => setItemStatus(item.id, "IN_PROGRESS"))}
+            >
               <CircleDotIcon /> Em andamento
             </DropdownMenuItem>
           )}
           {item.status !== "OPEN" && (
-            <DropdownMenuItem onClick={() => run(() => setItemStatus(item.id, "OPEN"))}>
+            <DropdownMenuItem
+              onClick={() => run(() => setItemStatus(item.id, "OPEN"))}
+            >
               <RotateCcwIcon /> Reabrir
             </DropdownMenuItem>
           )}
           {!discarded && (
-            <DropdownMenuItem onClick={() => run(() => setItemStatus(item.id, "DISCARDED"))}>
+            <DropdownMenuItem
+              onClick={() => run(() => setItemStatus(item.id, "DISCARDED"))}
+            >
               <BanIcon /> Descartar
             </DropdownMenuItem>
           )}
@@ -171,7 +238,12 @@ export function ItemCard({
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {projects.map((p) => (
-                  <DropdownMenuItem key={p.id} onClick={() => run(() => promoteToImprovement(item.id, p.id))}>
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() =>
+                      run(() => promoteToImprovement(item.id, p.id))
+                    }
+                  >
                     {p.name}
                   </DropdownMenuItem>
                 ))}
@@ -179,7 +251,10 @@ export function ItemCard({
             </DropdownMenuSub>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => setConfirmDelete(true)}
+          >
             <Trash2Icon /> Excluir
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -188,7 +263,9 @@ export function ItemCard({
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Editar {ITEM_TYPE_LABEL[editType].singular.toLowerCase()}</DialogTitle>
+            <DialogTitle>
+              Editar {ITEM_TYPE_LABEL[editType].singular.toLowerCase()}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={onEditSubmit} className="grid gap-3">
             <ItemFields
@@ -205,10 +282,15 @@ export function ItemCard({
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Status: {ITEM_STATUS_LABEL[item.status]} · Prioridade: {PRIORITY_LABEL[item.priority]}
+              Status: {ITEM_STATUS_LABEL[item.status]} · Prioridade:{" "}
+              {PRIORITY_LABEL[item.priority]}
             </p>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditing(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditing(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={pending}>
@@ -218,6 +300,19 @@ export function ItemCard({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDoneDialog
+        title={item.title}
+        open={confirmDone}
+        onOpenChange={setConfirmDone}
+        pending={pending}
+        onConfirm={() =>
+          run(
+            () => setItemStatus(item.id, "DONE"),
+            () => setConfirmDone(false),
+          )
+        }
+      />
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
