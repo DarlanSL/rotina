@@ -60,6 +60,14 @@ npm run dev                   # http://localhost:3000 → entre como demo / demo
 4. Em Settings → Functions, escolha a região **São Paulo (gru1)**, para ficar perto do banco.
 5. **Fotos e vídeos**: em Storage → Create → **Blob**, crie um store com acesso **Private** e conecte ao projeto. A Vercel cria `BLOB_STORE_ID` e `BLOB_WEBHOOK_PUBLIC_KEY` sozinha e autentica o app automaticamente (OIDC). Faça um novo deploy. Sem o store, a tela avisa que os anexos não estão configurados.
 
+### Listas
+- Em `/listas` ficam listas avulsas, como Mercado ou Papelaria. Os itens são marcados na hora, mesmo com internet lenta.
+- Os itens das listas **não entram no relatório**. Para registrar a ida às compras, use **Agendar ida** na lista: isso cria uma atividade normal, que aparece na Agenda e no relatório.
+
+### Previsão do tempo
+- A bolinha no canto da tela usa o [Open-Meteo](https://open-meteo.com), gratuito e sem chave. O navegador consulta direto e guarda a previsão por 30 minutos.
+- A cidade padrão fica em **Minha conta**. Na bolinha, **Usar minha localização** passa a usar o GPS daquele aparelho, e a escolha fica salva nele.
+
 ### Anexos (fotos e vídeos)
 - Ficam no Vercel Blob **privado**. O app só entrega o arquivo ao dono, com um link assinado de 1 hora.
 - O envio vai do navegador direto ao Blob, então não esbarra no limite de 4,5 MB das funções. Fotos são reduzidas para até 2048px antes do envio.

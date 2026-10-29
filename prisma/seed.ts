@@ -20,7 +20,8 @@ async function main() {
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   const user = await db.user.upsert({
     where: { username: DEMO_USERNAME },
-    update: { passwordHash },
+    // previsão do tempo volta ao padrão (sem cidade) para o seed ser repetível
+    update: { passwordHash, weatherCity: null, weatherLat: null, weatherLon: null, showWeather: true },
     create: { username: DEMO_USERNAME, passwordHash, name: "Usuário Demo", timezone: tz },
   });
 
@@ -32,6 +33,7 @@ async function main() {
     db.document.deleteMany({ where: { userId: user.id } }),
     db.item.deleteMany({ where: { userId: user.id } }),
     db.project.deleteMany({ where: { userId: user.id } }),
+    db.list.deleteMany({ where: { userId: user.id } }),
   ]);
 
   const tag = (name: string) => ({
@@ -220,6 +222,25 @@ async function main() {
       { userId: user.id, type: "REMINDER", title: "Pagar IPVA", remindAt: at(-1, 9) },
       { userId: user.id, type: "REMINDER", title: "Aniversário da Ana", remindAt: at(5, 8) },
     ],
+  });
+
+  // Listas de compras (não entram no relatório)
+  await db.list.create({
+    data: {
+      userId: user.id,
+      name: "Mercado",
+      entries: {
+        create: [
+          { text: "Arroz 5 kg" },
+          { text: "Feijão" },
+          { text: "Café" },
+          { text: "Leite", done: true, doneAt: new Date() },
+        ],
+      },
+    },
+  });
+  await db.list.create({
+    data: { userId: user.id, name: "Papelaria", entries: { create: [{ text: "Caderno" }, { text: "Canetas azuis" }] } },
   });
 
   console.log(`Seed concluído — entre com usuário "${DEMO_USERNAME}" e senha "${DEMO_PASSWORD}"`);

@@ -31,7 +31,7 @@ export function SidebarLinks({ pathname }: { pathname: string | null }) {
 
 export function BottomLinks({ pathname }: { pathname: string | null }) {
   return (
-    <ul className="grid grid-cols-6">
+    <ul className="grid grid-cols-7">
       {NAV_ITEMS.filter((i) => i.mobile).map((item) => {
         const Icon = item.icon;
         const active =
@@ -48,7 +48,7 @@ export function BottomLinks({ pathname }: { pathname: string | null }) {
             >
               <span
                 className={cn(
-                  "flex h-7 w-11 items-center justify-center rounded-full transition-colors",
+                  "flex h-7 w-10 items-center justify-center rounded-full transition-colors",
                   active && TONES[item.tone].tile,
                 )}
               >

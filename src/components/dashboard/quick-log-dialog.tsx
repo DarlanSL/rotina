@@ -12,12 +12,16 @@ export function QuickLogDialog({
   className,
   label = "Registrar atividade",
   title = "O que você fez hoje?",
+  defaultTitle,
+  variant,
 }: {
   today: string;
   knownTags: string[];
   className?: string;
   label?: string;
   title?: string;
+  defaultTitle?: string;
+  variant?: React.ComponentProps<typeof Button>["variant"];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -25,7 +29,7 @@ export function QuickLogDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button className={className}>
+          <Button className={className} variant={variant}>
             <PlusIcon /> {label}
           </Button>
         }
@@ -34,7 +38,7 @@ export function QuickLogDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <ActivityForm today={today} knownTags={knownTags} onDone={() => setOpen(false)} />
+        <ActivityForm today={today} knownTags={knownTags} defaultTitle={defaultTitle} onDone={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

@@ -15,12 +15,15 @@ export function ActivityForm({
   activity,
   onDone,
   compact,
+  defaultTitle,
 }: {
   today: string;
   knownTags: string[];
   activity?: ActivityView;
   onDone?: () => void;
   compact?: boolean;
+  /** Título já preenchido ao criar (ex.: agendar a ida às compras a partir de uma lista) */
+  defaultTitle?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const { pending, run } = useAction();
@@ -61,7 +64,7 @@ export function ActivityForm({
             required
             maxLength={200}
             placeholder="Ex: Reunião com fornecedor"
-            defaultValue={activity?.title}
+            defaultValue={activity?.title ?? defaultTitle}
             autoComplete="off"
           />
         </FormField>

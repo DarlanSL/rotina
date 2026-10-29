@@ -5,6 +5,7 @@ import { PageSkeleton } from "@/components/layout/page-skeleton";
 import { NotificationBell } from "@/components/notifications/bell";
 import { NotificationEngine } from "@/components/notifications/engine";
 import { MobileUser, SidebarUser, UserSkeleton } from "@/components/layout/user-menu";
+import { WeatherSlot } from "@/components/weather/weather-slot";
 
 /**
  * O shell (navegação) é estático e aparece instantaneamente;
@@ -30,12 +31,15 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </Suspense>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-5 pb-28 md:px-8 md:pt-8 md:pb-10 print:max-w-none print:p-0">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-5 pb-28 md:px-8 md:pt-8 md:pb-24 print:max-w-none print:p-0">
           <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
         </main>
       </div>
       <BottomNav />
       <NotificationEngine />
+      <Suspense fallback={null}>
+        <WeatherSlot />
+      </Suspense>
     </div>
   );
 }

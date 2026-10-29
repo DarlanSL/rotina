@@ -17,6 +17,11 @@ model User {
   passwordHash String?
   email        String?  @unique
   timezone     String   @default("America/Sao_Paulo")
+  /// Previsão do tempo: cidade padrão (Open-Meteo) e se a bolinha aparece
+  weatherCity  String?
+  weatherLat   Float?
+  weatherLon   Float?
+  showWeather  Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -26,6 +31,7 @@ model User {
   documents   Document[]
   projects    Project[]
   items       Item[]
+  lists       List[]
   attachments Attachment[]
 }
 
@@ -205,4 +211,32 @@ model Attachment {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([itemId])
+}
+
+/// Listas avulsas (mercado, papelaria…). Ficam fora do relatório; quem quiser registrar
+/// a ida às compras agenda uma atividade.
+model List {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries ListEntry[]
+
+  @@unique([userId, name])
+}
+
+model ListEntry {
+  id        String    @id @default(cuid())
+  listId    String
+  text      String
+  done      Boolean   @default(false)
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([listId, done])
 }

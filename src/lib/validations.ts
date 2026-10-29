@@ -137,3 +137,18 @@ export const changePasswordSchema = z
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Dados inválidos";
 }
+
+// ---------- Listas ----------
+export const listNameSchema = z.string().trim().min(1, "Dê um nome à lista").max(60, "Nome muito longo");
+
+const LIST_ENTRY_MAX = 200;
+const LIST_ENTRIES_PER_ADD = 100;
+
+/** "arroz, feijão; café" ou várias linhas → um item por parte (sem vazios e sem repetir). */
+export function splitListEntries(text: string): string[] {
+  const parts = text
+    .split(/[\n,;]+/)
+    .map((p) => p.trim().replace(/\s+/g, " ").slice(0, LIST_ENTRY_MAX))
+    .filter(Boolean);
+  return [...new Set(parts)].slice(0, LIST_ENTRIES_PER_ADD);
+}

@@ -6,6 +6,7 @@ import {
   FolderKanbanIcon,
   LayoutDashboardIcon,
   LightbulbIcon,
+  ListChecksIcon,
   RefreshCwIcon,
 } from "lucide-react";
 
@@ -46,6 +47,11 @@ export const TONES = {
     tile: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300",
     active: "bg-fuchsia-50 text-fuchsia-800 dark:bg-fuchsia-500/15 dark:text-fuchsia-200",
   },
+  teal: {
+    icon: "text-teal-600 dark:text-teal-400",
+    tile: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+    active: "bg-teal-50 text-teal-800 dark:bg-teal-500/15 dark:text-teal-200",
+  },
   rose: {
     icon: "text-rose-600 dark:text-rose-400",
     tile: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
@@ -70,6 +76,7 @@ export const NAV_ITEMS = [
     mobile: true,
   },
   { key: "ideias", href: "/ideias", label: "Ideias", icon: LightbulbIcon, tone: "emerald", mobile: true },
+  { key: "listas", href: "/listas", label: "Listas", icon: ListChecksIcon, tone: "teal", mobile: true },
   { key: "projetos", href: "/projetos", label: "Projetos", icon: FolderKanbanIcon, tone: "rose", mobile: false },
   {
     key: "relatorios",
