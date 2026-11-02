@@ -55,7 +55,7 @@ export function NotificationBell({ className }: { className?: string }) {
       <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-0">
         <div className="border-b p-3">
           <p className="text-sm font-semibold">Notificações</p>
-          <p className="text-xs text-muted-foreground">Avisos de atividades, lembretes e prazos.</p>
+          <p className="text-xs text-muted-foreground">Avisos de atividades, lembretes, prazos e mudanças no que é compartilhado.</p>
         </div>
 
         {permission === "default" && (

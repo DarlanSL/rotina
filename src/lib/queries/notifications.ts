@@ -4,6 +4,7 @@ import { addDays, fromDbDate, timeToInstant, toDbDate, todayISO } from "@/lib/da
 import { bucketSize, getDashboardData } from "@/lib/queries/dashboard";
 import type { NotifyEvent } from "@/lib/notify";
 import { visibleActivity } from "@/lib/queries/sharing";
+import { deliverableNotices, type DeliverableNotice } from "@/lib/queries/share-notices";
 import type { CurrentUser } from "@/lib/session";
 
 // Janela de eventos enviada ao navegador (ele consulta de novo a cada poucos minutos)
@@ -16,6 +17,8 @@ export type NotificationFeed = {
   events: NotifyEvent[];
   /** Resumo diário de prazos, mostrado uma vez por dia */
   summary: { overdue: number; today: number; upcoming: number; lines: string[] };
+  /** Mudanças feitas por outra pessoa em algo compartilhado */
+  notices: DeliverableNotice[];
 };
 
 export async function getNotificationFeed(user: CurrentUser): Promise<NotificationFeed> {
@@ -24,7 +27,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
   const from = new Date(now - LOOKBACK_MS);
   const to = new Date(now + LOOKAHEAD_MS);
 
-  const [activities, items, dashboard] = await Promise.all([
+  const [activities, items, dashboard, notices] = await Promise.all([
     db.activity.findMany({
       where: {
         ...visibleActivity(user.id),
@@ -53,6 +56,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
       select: { id: true, type: true, title: true, remindAt: true, notifyBefore: true, project: { select: { id: true, name: true } } },
     }),
     getDashboardData(user),
+    deliverableNotices(user.id),
   ]);
 
   const events: NotifyEvent[] = [];
@@ -107,5 +111,6 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
       upcoming: bucketSize(upcoming),
       lines,
     },
+    notices,
   };
 }

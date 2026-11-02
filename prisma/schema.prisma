@@ -37,6 +37,7 @@ model User {
   sharedActivities ActivityShare[]
   activitySeries   ActivitySeries[]
   sharedLists      ListShare[]
+  shareNotices     ShareNotice[]
 }
 
 // ---------- Diário de Atividades ----------
@@ -311,4 +312,23 @@ model ListEntry {
   list List @relation(fields: [listId], references: [id], onDelete: Cascade)
 
   @@index([listId, done])
+}
+
+/// Aviso para quem participa de algo compartilhado: outra pessoa mudou um compromisso ou uma lista.
+/// Mudanças seguidas da mesma pessoa no mesmo item se juntam num aviso só (ver lib/queries/share-notices).
+model ShareNotice {
+  id        String   @id @default(cuid())
+  userId    String // quem recebe
+  actorId   String // quem mudou
+  targetKey String // "list:<id>" ou "activity:<id>"
+  title     String
+  lines     String[]
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([userId, targetKey, actorId])
 }

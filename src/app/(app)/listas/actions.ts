@@ -6,6 +6,8 @@ import { requireUser } from "@/lib/session";
 import { firstError, listNameSchema, splitListEntries } from "@/lib/validations";
 import { failure, success, type ActionResult } from "@/lib/action-result";
 import { MAX_SHARES, resolveUsers, visibleList } from "@/lib/queries/sharing";
+import { listMembers, notifyShare } from "@/lib/queries/share-notices";
+import type { CurrentUser } from "@/lib/session";
 import { Prisma } from "@/generated/prisma/client";
 
 const DUPLICATE = "Já existe uma lista com esse nome";
@@ -17,6 +19,20 @@ async function canEditList(userId: string, listId: string) {
 
 /** Marca a lista como mexida agora (ela sobe na tela de listas). */
 const touch = (listId: string) => db.list.update({ where: { id: listId }, data: { updatedAt: new Date() } });
+
+/** Avisa os outros participantes de uma lista compartilhada. */
+async function notifyList(user: CurrentUser, listId: string, lines: string[], opts: { title?: string; members?: Awaited<ReturnType<typeof listMembers>> } = {}) {
+  const members = opts.members ?? (await listMembers(listId));
+  if (!members || !lines.length) return;
+  await notifyShare({
+    actorId: user.id,
+    recipients: members.ids,
+    targetKey: `list:${listId}`,
+    title: opts.title ?? `@${user.username} mudou a lista ${members.name}`,
+    lines,
+    url: `/listas/${listId}`,
+  });
+}
 
 function done(message?: string, id?: string) {
   revalidatePath("/listas", "layout");
@@ -41,21 +57,34 @@ export async function renameList(id: string, name: string): Promise<ActionResult
   const user = await requireUser();
   const parsed = listNameSchema.safeParse(name);
   if (!parsed.success) return failure(firstError(parsed.error));
-  if (!(await canEditList(user.id, id))) return failure("Lista não encontrada");
+  const before = await db.list.findFirst({ where: { id, ...visibleList(user.id) }, select: { name: true } });
+  if (!before) return failure("Lista não encontrada");
   try {
     await db.list.update({ where: { id }, data: { name: parsed.data } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return failure(DUPLICATE);
     throw error;
   }
+  if (before.name !== parsed.data) await notifyList(user, id, [`Renomeou: ${before.name} → ${parsed.data}`]);
   return done("Lista renomeada");
 }
 
 /** Só o dono exclui (some para todos). */
 export async function deleteList(id: string): Promise<ActionResult> {
   const user = await requireUser();
+  const members = await listMembers(id);
   const { count } = await db.list.deleteMany({ where: { id, userId: user.id } });
   if (!count) return failure("Lista não encontrada");
+  if (members) {
+    await notifyShare({
+      actorId: user.id,
+      recipients: members.ids,
+      targetKey: `list:${id}`,
+      title: `@${user.username} excluiu a lista ${members.name}`,
+      lines: ["A lista não aparece mais para você"],
+      url: "/listas",
+    });
+  }
   return done("Lista excluída");
 }
 
@@ -68,23 +97,25 @@ export async function addListEntries(listId: string, text: string): Promise<Acti
 
   await db.listEntry.createMany({ data: texts.map((t) => ({ listId, text: t })) });
   await touch(listId);
+  await notifyList(user, listId, texts.map((t) => `Adicionou: ${t}`));
   return done();
 }
 
 export async function setListEntryDone(id: string, isDone: boolean): Promise<ActionResult> {
   const user = await requireUser();
-  const { count } = await db.listEntry.updateMany({
-    where: { id, list: visibleList(user.id) },
-    data: { done: isDone, doneAt: isDone ? new Date() : null },
-  });
-  if (!count) return failure("Item não encontrado");
+  const entry = await db.listEntry.findFirst({ where: { id, list: visibleList(user.id) }, select: { listId: true, text: true, done: true } });
+  if (!entry) return failure("Item não encontrado");
+  await db.listEntry.update({ where: { id }, data: { done: isDone, doneAt: isDone ? new Date() : null } });
+  if (entry.done !== isDone) await notifyList(user, entry.listId, [`${isDone ? "Marcou" : "Desmarcou"}: ${entry.text}`]);
   return done();
 }
 
 export async function deleteListEntry(id: string): Promise<ActionResult> {
   const user = await requireUser();
-  const { count } = await db.listEntry.deleteMany({ where: { id, list: visibleList(user.id) } });
-  if (!count) return failure("Item não encontrado");
+  const entry = await db.listEntry.findFirst({ where: { id, list: visibleList(user.id) }, select: { listId: true, text: true } });
+  if (!entry) return failure("Item não encontrado");
+  await db.listEntry.deleteMany({ where: { id } });
+  await notifyList(user, entry.listId, [`Removeu: ${entry.text}`]);
   return done();
 }
 
@@ -93,6 +124,7 @@ export async function clearDoneEntries(listId: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!(await canEditList(user.id, listId))) return failure("Lista não encontrada");
   const { count } = await db.listEntry.deleteMany({ where: { listId, done: true } });
+  if (count) await notifyList(user, listId, [`Tirou da lista ${count} ${count === 1 ? "item marcado" : "itens marcados"}`]);
   return done(count ? `${count} ${count === 1 ? "item removido" : "itens removidos"}` : "Nada marcado");
 }
 
@@ -100,7 +132,8 @@ export async function clearDoneEntries(listId: string): Promise<ActionResult> {
 export async function uncheckAllEntries(listId: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!(await canEditList(user.id, listId))) return failure("Lista não encontrada");
-  await db.listEntry.updateMany({ where: { listId, done: true }, data: { done: false, doneAt: null } });
+  const { count } = await db.listEntry.updateMany({ where: { listId, done: true }, data: { done: false, doneAt: null } });
+  if (count) await notifyList(user, listId, ["Desmarcou todos os itens"]);
   return done("Tudo desmarcado");
 }
 
@@ -117,7 +150,20 @@ export async function shareList(listId: string, username: string): Promise<Actio
   if (!resolved.ids.length) return failure("Informe o usuário de outra pessoa");
   if (list._count.shares + resolved.ids.length > MAX_SHARES) return failure(`Compartilhe com até ${MAX_SHARES} pessoas`);
 
-  await db.listShare.createMany({ data: resolved.ids.map((userId) => ({ listId, userId })), skipDuplicates: true });
+  const already = await db.listShare.findMany({ where: { listId, userId: { in: resolved.ids } }, select: { userId: true } });
+  const added = resolved.ids.filter((id) => !already.some((a) => a.userId === id));
+  await db.listShare.createMany({ data: added.map((userId) => ({ listId, userId })), skipDuplicates: true });
+  const members = await listMembers(listId);
+  if (members && added.length) {
+    await notifyShare({
+      actorId: user.id,
+      recipients: added,
+      targetKey: `list:${listId}`,
+      title: `@${user.username} compartilhou a lista ${members.name} com você`,
+      lines: ["Vocês podem editar os itens juntos"],
+      url: `/listas/${listId}`,
+    });
+  }
   return done("Lista compartilhada");
 }
 
@@ -126,6 +172,17 @@ export async function unshareList(listId: string, userId: string): Promise<Actio
   const user = await requireUser();
   const { count } = await db.listShare.deleteMany({ where: { listId, userId, list: { userId: user.id } } });
   if (!count) return failure("Não encontrado");
+  const members = await listMembers(listId);
+  if (members) {
+    await notifyShare({
+      actorId: user.id,
+      recipients: [userId],
+      targetKey: `list:${listId}`,
+      title: `@${user.username} tirou você da lista ${members.name}`,
+      lines: ["A lista não aparece mais para você"],
+      url: "/listas",
+    });
+  }
   return done("Acesso removido");
 }
 
@@ -134,5 +191,16 @@ export async function leaveList(listId: string): Promise<ActionResult> {
   const user = await requireUser();
   const { count } = await db.listShare.deleteMany({ where: { listId, userId: user.id } });
   if (!count) return failure("Lista não encontrada");
+  const members = await listMembers(listId);
+  if (members) {
+    await notifyShare({
+      actorId: user.id,
+      recipients: members.ids,
+      targetKey: `list:${listId}`,
+      title: `@${user.username} saiu da lista ${members.name}`,
+      lines: ["Não vê mais a lista"],
+      url: `/listas/${listId}`,
+    });
+  }
   return done("Você saiu da lista");
 }

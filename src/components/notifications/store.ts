@@ -24,6 +24,7 @@ const KEYS = {
   lead: "rotina:notif:lead",
   fired: "rotina:notif:fired",
   summary: "rotina:notif:summaryDay",
+  noticesSince: "rotina:notif:noticesSince",
 };
 
 const MAX_HISTORY = 30;
@@ -134,6 +135,15 @@ export function saveFired(fired: Map<string, number>) {
 
 export function summaryShownOn(day: string) {
   return read<string | null>(KEYS.summary, null) === day;
+}
+
+/** Desde quando este aparelho recebe avisos de compartilhamento (a 1ª vez que o app abre nele). */
+export function noticesSince(): number {
+  const since = read<number | null>(KEYS.noticesSince, null);
+  if (since) return since;
+  const now = Date.now();
+  write(KEYS.noticesSince, now);
+  return now;
 }
 
 export function markSummaryShown(day: string) {

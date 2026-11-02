@@ -9,6 +9,7 @@ import {
   getLeadMinutes,
   loadFired,
   markSummaryShown,
+  noticesSince,
   saveFired,
   summaryShownOn,
 } from "@/components/notifications/store";
@@ -17,6 +18,7 @@ type Feed = {
   today: string;
   events: NotifyEvent[];
   summary: { overdue: number; today: number; upcoming: number; lines: string[] };
+  notices?: { id: string; title: string; body: string; url: string; at: string }[];
 };
 
 const TICK_MS = 20_000;
@@ -96,6 +98,20 @@ export function NotificationEngine() {
       void showNotice(`summary:${f.today}`, `Prazos: ${parts.join(" · ")}`, summary.lines.join("\n"), "/", push);
     }
 
+    /** Mudanças de outra pessoa em compromissos/listas compartilhados: cada uma uma vez por aparelho. */
+    function deliverNotices(f: Feed) {
+      if (!f.notices?.length) return;
+      const since = noticesSince(); // aparelho novo não recebe avisos antigos
+      const fired = loadFired();
+      const fresh = f.notices.filter((n) => !fired.has(`notice:${n.id}`) && Date.parse(n.at) >= since);
+      if (!fresh.length) return;
+      const now = Date.now();
+      for (const n of fresh) fired.set(`notice:${n.id}`, now);
+      saveFired(fired);
+      for (const n of fresh) void showNotice(`notice:${n.id}`, n.title, n.body, n.url, push);
+      router.refresh(); // a tela aberta mostra a mudança
+    }
+
     async function load() {
       try {
         const res = await fetch("/api/notificacoes", { cache: "no-store" });
@@ -103,6 +119,7 @@ export function NotificationEngine() {
         const data = (await res.json()) as Feed;
         feed.current = data;
         maybeSummary(data);
+        deliverNotices(data);
         tick();
       } catch {
         // offline: tenta de novo no próximo ciclo
