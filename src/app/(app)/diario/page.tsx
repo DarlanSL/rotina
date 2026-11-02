@@ -8,7 +8,7 @@ import { ActivityFilters } from "@/components/diario/activity-filters";
 import { ActivityItem } from "@/components/diario/activity-item";
 import { requireUser } from "@/lib/session";
 import { listActivities, listTags, type ActivityView } from "@/lib/queries/activities";
-import { durationMinutes, formatLongDateBR, formatMinutes, todayISO } from "@/lib/dates";
+import { addDays, durationMinutes, formatLongDateBR, formatMinutes, todayISO } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Diário de Atividades" };
 
@@ -23,8 +23,10 @@ export default async function DiarioPage(props: PageProps<"/diario">) {
     tag: typeof params.tag === "string" && params.tag ? params.tag : undefined,
   };
 
-  const [activities, tags] = await Promise.all([listActivities(user, filters), listTags(user)]);
   const today = todayISO(user.timezone);
+  // sem "Até": mostra no máximo uma semana à frente (o futuro todo — e as repetições — fica na Agenda)
+  const query = { ...filters, to: filters.to ?? addDays(today, 7) };
+  const [activities, tags] = await Promise.all([listActivities(user, query), listTags(user)]);
 
   // Agrupa por dia (lista já vem ordenada por data desc)
   const groups = new Map<string, ActivityView[]>();

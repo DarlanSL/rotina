@@ -16,6 +16,7 @@ const activity = (id: string, date: string, startTime: string | null): ActivityV
   mine: true,
   owner: "demo",
   sharedWith: [],
+  repeatLabel: null,
   tags: [],
 });
 const item = (id: string): ScheduledItem => ({

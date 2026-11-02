@@ -20,12 +20,15 @@ export function ConfirmAction({
   description,
   confirmLabel,
   action,
+  secondary,
   trigger,
 }: {
   title: string;
   description?: string;
   confirmLabel: string;
   action: () => Promise<ActionResult>;
+  /** Segunda opção (ex.: "Esta e as próximas") */
+  secondary?: { label: string; action: () => Promise<ActionResult> };
   trigger: React.ReactElement;
 }) {
   const [open, setOpen] = useState(false);
@@ -43,6 +46,11 @@ export function ConfirmAction({
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
+          {secondary && (
+            <Button variant="destructive" disabled={pending} onClick={() => run(secondary.action, () => setOpen(false))}>
+              {secondary.label}
+            </Button>
+          )}
           <Button variant="destructive" disabled={pending} onClick={() => run(action, () => setOpen(false))}>
             {confirmLabel}
           </Button>

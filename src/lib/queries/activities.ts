@@ -2,6 +2,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { fromDbDate, toDbDate } from "@/lib/dates";
 import { visibleActivity } from "@/lib/queries/sharing";
+import { seriesRule } from "@/lib/queries/series";
+import { describeSeries, type RepeatKind } from "@/lib/recurrence";
 import type { CurrentUser } from "@/lib/session";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -18,6 +20,9 @@ const activityInclude = {
   tags: { select: { id: true, name: true }, orderBy: { name: "asc" } },
   user: { select: { username: true } },
   shares: { select: { userId: true, notifyBefore: true, user: { select: { username: true } } }, orderBy: { createdAt: "asc" } },
+  series: {
+    select: { id: true, repeatKind: true, intervalDays: true, monthDay: true, weekOrdinal: true, weekday: true, repeatTimes: true },
+  },
 } as const;
 
 type ActivityRow = {
@@ -32,6 +37,15 @@ type ActivityRow = {
   tags: { id: string; name: string }[];
   user: { username: string };
   shares: { userId: string; notifyBefore: number | null; user: { username: string } }[];
+  series: {
+    id: string;
+    repeatKind: RepeatKind;
+    intervalDays: number;
+    monthDay: number | null;
+    weekOrdinal: number | null;
+    weekday: number | null;
+    repeatTimes: number | null;
+  } | null;
 };
 
 /** Visão de quem está olhando (`viewerId`): o aviso é o dele; as tags são só do dono. */
@@ -52,6 +66,8 @@ export function toActivityView(a: ActivityRow, viewerId: string) {
     owner: a.user.username,
     /** Com quem está compartilhada (sem o dono) */
     sharedWith: a.shares.map((s) => s.user.username),
+    /** Se faz parte de uma repetição: "toda semana", "toda 1ª quarta-feira do mês"… */
+    repeatLabel: a.series ? describeSeries(seriesRule(a.series)) : null,
   };
 }
 

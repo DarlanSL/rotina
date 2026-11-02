@@ -4,6 +4,7 @@ import { addDays, durationMinutes, minutesNowInTz, startOfDayInTz, toDbDate, tod
 import type { CurrentUser } from "@/lib/session";
 import { activityInclude, activityOrder, toActivityView, type ActivityView } from "@/lib/queries/activities";
 import { visibleActivity } from "@/lib/queries/sharing";
+import { extendSeries } from "@/lib/queries/series";
 import { toDocumentView, type DocumentView } from "@/lib/queries/documents";
 import { toRoutineView, type RoutineView } from "@/lib/queries/routines";
 import type { ItemType, Priority } from "@/generated/prisma/enums";
@@ -44,6 +45,7 @@ export function bucketSize(b: Bucket) {
 export async function getDashboardData(user: CurrentUser) {
   const tz = user.timezone;
   const today = todayISO(tz);
+  await extendSeries(user.id, today);
   const horizon = toDbDate(addDays(today, MAX_WINDOW_DAYS));
   const startOfToday = startOfDayInTz(today, tz);
   const startOfTomorrow = startOfDayInTz(addDays(today, 1), tz);

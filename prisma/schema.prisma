@@ -35,6 +35,7 @@ model User {
   attachments Attachment[]
 
   sharedActivities ActivityShare[]
+  activitySeries   ActivitySeries[]
   sharedLists      ListShare[]
 }
 
@@ -52,11 +53,36 @@ model Activity {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tags   Tag[]
-  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shares ActivityShare[]
+  tags     Tag[]
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares   ActivityShare[]
+  /// repetição a que pertence (compromisso que se repete)
+  seriesId String?
+  series   ActivitySeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
 
   @@index([userId, date])
+  @@index([seriesId, date])
+}
+
+/// Regra de um compromisso que se repete; cada repetição é uma Activity com seriesId.
+model ActivitySeries {
+  id             String     @id @default(cuid())
+  userId         String
+  repeatKind     RepeatKind
+  intervalDays   Int
+  monthDay       Int?
+  weekOrdinal    Int?
+  weekday        Int?
+  startDate      DateTime   @db.Date
+  repeatTimes    Int? // null = sem fim (as próximas são criadas aos poucos)
+  generatedUntil DateTime   @db.Date // até onde já existem compromissos criados
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities Activity[]
+
+  @@index([userId, active])
 }
 
 /// Compromisso compartilhado: aparece também para este usuário (que pode editar).
@@ -89,18 +115,30 @@ model Tag {
 
 // ---------- Rotinas / Ciclos de revisão ----------
 
+/// Como a rotina se repete
+enum RepeatKind {
+  INTERVAL // a cada X dias após concluir
+  MONTHLY_DAY // todo dia N do mês
+  MONTHLY_WEEKDAY // toda N-ésima (ou última) <dia da semana> do mês
+}
+
 model Routine {
-  id              String    @id @default(cuid())
+  id              String     @id @default(cuid())
   userId          String
   title           String
   description     String?
   intervalDays    Int // "a cada X dias a partir da última conclusão"
-  alertDaysBefore Int       @default(3)
-  lastCompletedAt DateTime? @db.Date
-  nextDueAt       DateTime  @db.Date // desnormalizado p/ ordenar e alertar
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  repeatKind      RepeatKind @default(INTERVAL)
+  monthDay        Int? // MONTHLY_DAY: dia do mês (1–31; em mês curto, o último dia)
+  weekOrdinal     Int? // MONTHLY_WEEKDAY: 1–4 ou -1 (última)
+  weekday         Int? // MONTHLY_WEEKDAY: 0 = domingo … 6 = sábado
+  repeatTimes     Int? // quantas vezes no total; null = sem fim
+  alertDaysBefore Int        @default(3)
+  lastCompletedAt DateTime?  @db.Date
+  nextDueAt       DateTime   @db.Date // desnormalizado p/ ordenar e alertar
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   completions   RoutineCompletion[]
   postponements RoutinePostponement[]

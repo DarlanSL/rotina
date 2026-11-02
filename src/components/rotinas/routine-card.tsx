@@ -23,7 +23,12 @@ export function RoutineCard({ routine }: { routine: RoutineWithHistory }) {
           <p className="font-medium">{routine.title}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <RepeatIcon className="size-3" /> a cada {routine.intervalDays} dia(s)
+              <RepeatIcon className="size-3" /> {routine.repeatLabel}
+              {routine.repeatTimes && (
+                <span className="font-medium text-foreground/80">
+                  · {routine.doneCount} de {routine.repeatTimes}
+                </span>
+              )}
             </span>
             {routine.postponeCount > 0 && (
               <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">

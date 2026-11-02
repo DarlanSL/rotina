@@ -62,7 +62,7 @@ export function ActivityRow({ activity: a, muted }: { activity: ActivityView; mu
       title={a.title}
       subtitle={`Atividade${a.startTime ? ` · ${a.startTime}${a.endTime ? `–${a.endTime}` : ""}` : ""}${
         a.tags.length ? ` · ${a.tags.map((t) => `#${t}`).join(" ")}` : ""
-      }${sharedLabel(a) ? ` · ${sharedLabel(a)}` : ""}`}
+      }${sharedLabel(a) ? ` · ${sharedLabel(a)}` : ""}${a.repeatLabel ? ` · ${a.repeatLabel}` : ""}`}
       href="/diario"
       muted={muted}
     />
@@ -97,7 +97,7 @@ export function RoutineRow({ routine: r, today, showDue }: { routine: RoutineVie
       icon={RefreshCwIcon}
       tone="violet"
       title={r.title}
-      subtitle={`Revisão · a cada ${r.intervalDays} dia(s)${showDue ? ` · prevista ${formatDateBR(r.nextDueAt)}` : ""}`}
+      subtitle={`Revisão · ${r.repeatLabel}${showDue ? ` · prevista ${formatDateBR(r.nextDueAt)}` : ""}`}
       href="/rotinas"
       badge={showDue ? <StatusBadge status={r.status} daysLeft={r.daysLeft} /> : undefined}
       actions={

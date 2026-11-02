@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { diffDays, fromDbDate, todayISO } from "@/lib/dates";
 import { getDeadlineStatus } from "@/lib/deadlines";
+import { describeRecurrence, type RepeatKind } from "@/lib/recurrence";
 import type { CurrentUser } from "@/lib/session";
 
 type RoutineRow = {
@@ -9,6 +10,11 @@ type RoutineRow = {
   title: string;
   description: string | null;
   intervalDays: number;
+  repeatKind: RepeatKind;
+  monthDay: number | null;
+  weekOrdinal: number | null;
+  weekday: number | null;
+  repeatTimes: number | null;
   alertDaysBefore: number;
   lastCompletedAt: Date | null;
   nextDueAt: Date;
@@ -21,6 +27,13 @@ export function toRoutineView(r: RoutineRow, today: string) {
     title: r.title,
     description: r.description,
     intervalDays: r.intervalDays,
+    repeatKind: r.repeatKind,
+    monthDay: r.monthDay,
+    weekOrdinal: r.weekOrdinal,
+    weekday: r.weekday,
+    repeatTimes: r.repeatTimes,
+    /** "a cada 30 dias", "todo dia 10 do mês"… */
+    repeatLabel: describeRecurrence({ ...r, kind: r.repeatKind }),
     alertDaysBefore: r.alertDaysBefore,
     lastCompletedAt: r.lastCompletedAt ? fromDbDate(r.lastCompletedAt) : null,
     nextDueAt: nextDue,
@@ -44,6 +57,7 @@ export async function listRoutines(user: CurrentUser) {
     include: {
       completions: { orderBy: { completedAt: "desc" }, take: 20 },
       postponements: { orderBy: { createdAt: "desc" } },
+      _count: { select: { completions: true } },
     },
   });
   return rows.map((r) => {
@@ -65,7 +79,7 @@ export async function listRoutines(user: CurrentUser) {
       })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
-    return { ...toRoutineView(r, today), history, postponeCount: r.postponements.length, today };
+    return { ...toRoutineView(r, today), history, postponeCount: r.postponements.length, doneCount: r._count.completions, today };
   });
 }
 

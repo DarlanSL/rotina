@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef } from "react";
-import { UsersIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { RepeatIcon, UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
+import { NativeSelect } from "@/components/native-select";
+import { ACTIVITY_REPEATS, MAX_SERIES_TIMES, repeatChoiceLabel, type ActivityRepeat } from "@/lib/recurrence";
 import { NotifyBeforeField } from "@/components/notifications/notify-before-select";
 import { useAction } from "@/components/use-action";
 import { createActivity, updateActivity } from "@/app/(app)/diario/actions";
@@ -32,6 +34,8 @@ export function ActivityForm({
   const prefix = activity ? `act-${activity.id}` : "act-new";
   // tags e com quem compartilhar são de quem criou
   const owner = !activity || activity.mine;
+  const [date, setDate] = useState(activity?.date ?? today);
+  const [repeat, setRepeat] = useState<ActivityRepeat | "">("");
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +56,7 @@ export function ActivityForm({
             end.value = "";
             (form.elements.namedItem("title") as HTMLInputElement).focus();
           }
+          setRepeat("");
         }
         onDone?.();
       },
@@ -73,7 +78,14 @@ export function ActivityForm({
           />
         </FormField>
         <FormField label="Data" htmlFor={`${prefix}-date`} className="col-span-2 @md:col-span-1">
-          <Input id={`${prefix}-date`} name="date" type="date" required defaultValue={activity?.date ?? today} />
+          <Input
+            id={`${prefix}-date`}
+            name="date"
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </FormField>
         <FormField label="Das" htmlFor={`${prefix}-start`}>
           <Input id={`${prefix}-start`} name="startTime" type="time" defaultValue={activity?.startTime ?? ""} />
@@ -94,6 +106,51 @@ export function ActivityForm({
         </FormField>
       )}
       {compact && <input type="hidden" name="notes" defaultValue="" />}
+      {!activity && (
+        <div className="flex flex-wrap items-end gap-3">
+          <FormField label="Repetir" htmlFor={`${prefix}-repeat`} className="min-w-56 flex-1">
+            <NativeSelect
+              id={`${prefix}-repeat`}
+              name="repeat"
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value as ActivityRepeat | "")}
+            >
+              <option value="">Não repete</option>
+              {ACTIVITY_REPEATS.map((r) => (
+                <option key={r} value={r}>
+                  {/* as mensais usam o dia escolhido em "Data" */}
+                  {date ? repeatChoiceLabel(r, date) : r}
+                </option>
+              ))}
+            </NativeSelect>
+          </FormField>
+          {repeat === "EVERY_DAYS" && (
+            <FormField label="A cada (dias)" htmlFor={`${prefix}-every`} className="w-28">
+              <Input id={`${prefix}-every`} name="repeatEvery" type="number" inputMode="numeric" min={2} max={365} required defaultValue={15} />
+            </FormField>
+          )}
+          {repeat && (
+            <FormField label="Quantas vezes" htmlFor={`${prefix}-times`} className="w-32">
+              <Input
+                id={`${prefix}-times`}
+                name="repeatTimes"
+                type="number"
+                inputMode="numeric"
+                min={2}
+                max={MAX_SERIES_TIMES}
+                placeholder="Sem fim"
+              />
+            </FormField>
+          )}
+        </div>
+      )}
+      {activity?.repeatLabel && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="applyToFollowing" className="size-4 accent-primary" />
+          <RepeatIcon className="size-3.5 text-muted-foreground" />
+          Aplicar também às próximas repetições ({activity.repeatLabel})
+        </label>
+      )}
       <div className="flex flex-wrap items-end gap-3">
         {owner ? (
           <>

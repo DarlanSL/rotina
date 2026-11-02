@@ -5,6 +5,7 @@ import { buildAgendaDays } from "@/lib/agenda";
 import type { CurrentUser } from "@/lib/session";
 import { activityInclude, toActivityView } from "@/lib/queries/activities";
 import { visibleActivity } from "@/lib/queries/sharing";
+import { extendSeries } from "@/lib/queries/series";
 import { toDocumentView } from "@/lib/queries/documents";
 import { toRoutineView } from "@/lib/queries/routines";
 import type { Bucket, ScheduledItem } from "@/lib/queries/dashboard";
@@ -25,6 +26,7 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
   const tz = user.timezone;
   const today = todayISO(tz);
   const to = addDays(from, days - 1);
+  await extendSeries(user.id, today, to);
   const withOverdue = from === today;
   const rangeStart = startOfDayInTz(from, tz);
   const rangeEnd = startOfDayInTz(addDays(to, 1), tz);

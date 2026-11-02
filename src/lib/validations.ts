@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isTimeBefore } from "@/lib/dates";
 import { NOTIFY_BEFORE_OPTIONS } from "@/lib/notify";
+import { ACTIVITY_REPEATS, MAX_SERIES_TIMES, REPEAT_KINDS } from "@/lib/recurrence";
 
 // Campos de formulário vazios chegam como "" — tratamos como ausentes
 const optionalText = (max = 5000) =>
@@ -12,6 +13,10 @@ const optionalText = (max = 5000) =>
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 const optionalIsoDate = z.preprocess((v) => (v === "" ? undefined : v), isoDate.optional());
 const intField = (min: number, max: number) => z.coerce.number().int().min(min).max(max);
+
+// campo numérico que pode vir vazio (ou nem vir, quando escondido no formulário)
+const optionalInt = (min: number, max: number) =>
+  z.preprocess((v) => (v === "" || v == null ? undefined : v), intField(min, max).optional());
 
 // antecedência do aviso: "" = padrão do aparelho
 const notifyBefore = z.preprocess(
@@ -41,6 +46,13 @@ export const activitySchema = z
     notifyBefore,
     // usuários com quem compartilhar: "ana, bruno"
     shareWith: optionalText(500),
+    // repetição (só ao criar): "" = não repete
+    repeat: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.enum(ACTIVITY_REPEATS).optional()),
+    repeatEvery: optionalInt(2, 365),
+    // total de vezes, contando a primeira; em branco = sem fim
+    repeatTimes: optionalInt(2, MAX_SERIES_TIMES),
+    // ao editar uma repetição: vale também para as próximas
+    applyToFollowing: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
     // "trabalho, saúde" → ["trabalho", "saúde"]
     tags: z.preprocess(
       (v) =>
@@ -61,15 +73,35 @@ export const activitySchema = z
   .refine((a) => !a.startTime || !a.endTime || isTimeBefore(a.startTime, a.endTime), {
     message: "O horário de término deve ser depois do início",
     path: ["endTime"],
+  })
+  .refine((a) => a.repeat !== "EVERY_DAYS" || a.repeatEvery, {
+    message: "Informe de quantos em quantos dias",
+    path: ["repeatEvery"],
   });
 
-export const routineSchema = z.object({
-  title: z.string().trim().min(1, "Informe um título").max(200),
-  description: optionalText(),
-  intervalDays: intField(1, 3650),
-  alertDaysBefore: intField(0, 365),
-  lastCompletedAt: optionalIsoDate,
-});
+export const routineSchema = z
+  .object({
+    title: z.string().trim().min(1, "Informe um título").max(200),
+    description: optionalText(),
+    repeatKind: z.enum(REPEAT_KINDS).default("INTERVAL"),
+    intervalDays: optionalInt(1, 3650),
+    monthDay: optionalInt(1, 31),
+    weekOrdinal: optionalInt(-1, 4).refine((n) => n !== 0, "Semana inválida"),
+    weekday: optionalInt(0, 6),
+    // em branco = repete sem fim
+    repeatTimes: optionalInt(1, 999),
+    alertDaysBefore: intField(0, 365),
+    lastCompletedAt: optionalIsoDate,
+  })
+  .refine((r) => r.repeatKind !== "INTERVAL" || r.intervalDays, {
+    message: "Informe de quantos em quantos dias",
+    path: ["intervalDays"],
+  })
+  .refine((r) => r.repeatKind !== "MONTHLY_DAY" || r.monthDay, { message: "Informe o dia do mês", path: ["monthDay"] })
+  .refine((r) => r.repeatKind !== "MONTHLY_WEEKDAY" || (r.weekOrdinal && r.weekday !== undefined), {
+    message: "Escolha a semana e o dia da semana",
+    path: ["weekday"],
+  });
 
 export const postponeSchema = z.object({
   newDate: isoDate,

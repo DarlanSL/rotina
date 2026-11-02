@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ClockIcon, LogOutIcon, PencilIcon, UsersIcon } from "lucide-react";
+import { ClockIcon, LogOutIcon, PencilIcon, RepeatIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import { formatTimeRange } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,8 +38,13 @@ export function ActivityItem({
         {activity.notes && (
           <p className="mt-0.5 text-sm whitespace-pre-line text-muted-foreground">{activity.notes}</p>
         )}
-        {(activity.tags.length > 0 || shared) && (
+        {(activity.tags.length > 0 || shared || activity.repeatLabel) && (
           <div className="mt-1.5 flex flex-wrap gap-1">
+            {activity.repeatLabel && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">
+                <RepeatIcon className="size-3" /> {activity.repeatLabel}
+              </span>
+            )}
             {shared && (
               <span className="inline-flex items-center gap-1 rounded-full bg-pink-100 px-2 py-0.5 text-xs text-pink-800 dark:bg-pink-500/15 dark:text-pink-300">
                 <UsersIcon className="size-3" /> {shared}
@@ -61,7 +66,22 @@ export function ActivityItem({
         <Button variant="ghost" size="icon-sm" aria-label="Editar" onClick={() => setEditing(true)}>
           <PencilIcon />
         </Button>
-        {activity.mine ? (
+        {activity.mine && activity.repeatLabel ? (
+          <ConfirmAction
+            title="Excluir atividade?"
+            description={`Ela se repete (${activity.repeatLabel}). Excluir só esta ou esta e as próximas?${
+              shared ? ` Também some para ${activity.sharedWith.map((u) => `@${u}`).join(", ")}.` : ""
+            }`}
+            confirmLabel="Só esta"
+            action={() => deleteActivity(activity.id)}
+            secondary={{ label: "Esta e as próximas", action: () => deleteActivity(activity.id, true) }}
+            trigger={
+              <Button variant="ghost" size="icon-sm" aria-label="Excluir atividade">
+                <Trash2Icon />
+              </Button>
+            }
+          />
+        ) : activity.mine ? (
           <ConfirmDelete
             what="atividade"
             description={
@@ -75,6 +95,11 @@ export function ActivityItem({
             description={`Ele deixa de aparecer para você, mas continua para @${activity.owner}.`}
             confirmLabel="Sair"
             action={() => leaveActivity(activity.id)}
+            secondary={
+              activity.repeatLabel
+                ? { label: "Sair desta e das próximas", action: () => leaveActivity(activity.id, true) }
+                : undefined
+            }
             trigger={
               <Button variant="ghost" size="icon-sm" aria-label="Sair do compromisso">
                 <LogOutIcon />
