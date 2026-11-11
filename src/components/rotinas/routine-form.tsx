@@ -62,12 +62,22 @@ export function RoutineFormDialog({ routine, trigger }: { routine?: RoutineView;
               onChange={(e) => setKind(e.target.value as RepeatKind)}
             >
               <option value="INTERVAL">A cada X dias (contando da conclusão)</option>
+              <option value="INTERVAL_FIXED">A cada X dias (datas fixas)</option>
+              <option value="WEEKLY">Toda semana num dia fixo (ex.: toda segunda)</option>
               <option value="MONTHLY_DAY">Todo mês num dia fixo (ex.: dia 10)</option>
               <option value="MONTHLY_WEEKDAY">Todo mês numa semana (ex.: 1ª quarta)</option>
             </NativeSelect>
           </FormField>
-          {kind === "INTERVAL" && (
-            <FormField label="A cada quantos dias" htmlFor={`${p}-interval`}>
+          {(kind === "INTERVAL" || kind === "INTERVAL_FIXED") && (
+            <FormField
+              label="A cada quantos dias"
+              htmlFor={`${p}-interval`}
+              hint={
+                kind === "INTERVAL"
+                  ? "A próxima conta a partir do dia em que você concluir."
+                  : "A próxima conta a partir da data prevista, mesmo concluindo antes ou depois."
+              }
+            >
               <Input
                 id={`${p}-interval`}
                 name="intervalDays"
@@ -76,8 +86,21 @@ export function RoutineFormDialog({ routine, trigger }: { routine?: RoutineView;
                 min={1}
                 max={3650}
                 required
-                defaultValue={routine?.repeatKind === "INTERVAL" ? routine.intervalDays : 30}
+                defaultValue={
+                  routine?.repeatKind === "INTERVAL" || routine?.repeatKind === "INTERVAL_FIXED" ? routine.intervalDays : 30
+                }
               />
+            </FormField>
+          )}
+          {kind === "WEEKLY" && (
+            <FormField label="Dia da semana" htmlFor={`${p}-weekday-w`}>
+              <NativeSelect id={`${p}-weekday-w`} name="weekday" defaultValue={routine?.weekday ?? 1}>
+                {WEEKDAY_NAMES.map((name, i) => (
+                  <option key={name} value={i}>
+                    {name.charAt(0).toUpperCase() + name.slice(1)}
+                  </option>
+                ))}
+              </NativeSelect>
             </FormField>
           )}
           {kind === "MONTHLY_DAY" && (
@@ -149,7 +172,7 @@ export function RoutineFormDialog({ routine, trigger }: { routine?: RoutineView;
           <FormField
             label="Última vez feita"
             htmlFor={`${p}-last`}
-            hint={kind === "INTERVAL" ? "Em branco: a ação fica pendente hoje para iniciar o ciclo." : "Em branco: a primeira vez é a próxima data da regra (pode ser hoje)."}
+            hint={kind === "INTERVAL" || kind === "INTERVAL_FIXED" ? "Em branco: a ação fica pendente hoje para iniciar o ciclo." : "Em branco: a primeira vez é a próxima data da regra (pode ser hoje)."}
           >
             <Input id={`${p}-last`} name="lastCompletedAt" type="date" defaultValue={routine?.lastCompletedAt ?? ""} />
           </FormField>

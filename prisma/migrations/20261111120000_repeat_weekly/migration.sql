@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "RepeatKind" ADD VALUE 'INTERVAL_FIXED';
+ALTER TYPE "RepeatKind" ADD VALUE 'WEEKLY';

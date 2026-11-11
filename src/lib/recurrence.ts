@@ -1,6 +1,6 @@
 /** Regras de repetição das rotinas — lógica pura (datas ISO "yyyy-MM-dd"), coberta por testes. */
 
-export const REPEAT_KINDS = ["INTERVAL", "MONTHLY_DAY", "MONTHLY_WEEKDAY"] as const;
+export const REPEAT_KINDS = ["INTERVAL", "INTERVAL_FIXED", "WEEKLY", "MONTHLY_DAY", "MONTHLY_WEEKDAY"] as const;
 export type RepeatKind = (typeof REPEAT_KINDS)[number];
 
 /** -1 = última semana do mês */
@@ -63,16 +63,33 @@ export function nextMonthlyOccurrence(r: Recurrence, fromIso: string, inclusive:
   throw new Error("Regra de repetição inválida");
 }
 
+const isMonthly = (r: Recurrence) => r.kind === "MONTHLY_DAY" || r.kind === "MONTHLY_WEEKDAY";
+const weekdayOfIso = (dateIso: string) => new Date(`${dateIso}T12:00:00Z`).getUTCDay();
+
+/** Próximo <dia da semana> a partir de `fromIso` (`inclusive`: a própria data vale). */
+export function nextWeekday(weekday: number, fromIso: string, inclusive: boolean, addDays: (iso: string, n: number) => string) {
+  const diff = (weekday - weekdayOfIso(fromIso) + 7) % 7;
+  return addDays(fromIso, diff === 0 && !inclusive ? 7 : diff);
+}
+
+/** Próxima data da regra depois de `fromIso` (regras de calendário: semanal e mensais). */
+function nextOnCalendar(r: Recurrence, fromIso: string, inclusive: boolean, addDays: (iso: string, n: number) => string) {
+  return r.kind === "WEEKLY" ? nextWeekday(r.weekday ?? 1, fromIso, inclusive, addDays) : nextMonthlyOccurrence(r, fromIso, inclusive);
+}
+
 /** Primeira data ao criar/editar: depois da última vez feita ou, sem ela, a partir de hoje. */
 export function firstDueDate(r: Recurrence, lastCompletedIso: string | null, todayIso: string, addDays: (iso: string, n: number) => string) {
-  if (r.kind === "INTERVAL") return lastCompletedIso ? addDays(lastCompletedIso, r.intervalDays) : todayIso;
-  return lastCompletedIso ? nextMonthlyOccurrence(r, lastCompletedIso, false) : nextMonthlyOccurrence(r, todayIso, true);
+  if (r.kind === "INTERVAL" || r.kind === "INTERVAL_FIXED") {
+    return lastCompletedIso ? addDays(lastCompletedIso, r.intervalDays) : todayIso;
+  }
+  return lastCompletedIso ? nextOnCalendar(r, lastCompletedIso, false, addDays) : nextOnCalendar(r, todayIso, true, addDays);
 }
 
 /**
  * Próxima data depois de concluir hoje.
- * - Intervalo: hoje + X dias.
- * - Mensal: a próxima data da regra depois da que estava prevista (concluir antes não "pula" um mês;
+ * - Intervalo (contando da conclusão): hoje + X dias.
+ * - Intervalo em datas fixas: data prevista + X dias (com atraso, pula para a próxima data que não passou).
+ * - Semanal / mensal: a próxima data da regra depois da que estava prevista (concluir antes não "pula" um mês;
  *   concluir com atraso não deixa a próxima no passado).
  */
 export function dueAfterCompletion(
@@ -82,12 +99,22 @@ export function dueAfterCompletion(
   addDays: (iso: string, n: number) => string,
 ): string {
   if (r.kind === "INTERVAL") return addDays(todayIso, r.intervalDays);
-  return nextMonthlyOccurrence(r, currentDueIso > todayIso ? currentDueIso : todayIso, false);
+  if (r.kind === "INTERVAL_FIXED") {
+    let next = addDays(currentDueIso, r.intervalDays);
+    while (next <= todayIso) next = addDays(next, r.intervalDays);
+    return next;
+  }
+  return nextOnCalendar(r, currentDueIso > todayIso ? currentDueIso : todayIso, false, addDays);
 }
 
 /** "a cada 30 dias", "todo dia 10", "toda 1ª quarta-feira do mês", "todo último domingo do mês". */
 export function describeRecurrence(r: Recurrence): string {
   if (r.kind === "INTERVAL") return r.intervalDays === 1 ? "todo dia" : `a cada ${r.intervalDays} dias`;
+  if (r.kind === "INTERVAL_FIXED") return r.intervalDays === 1 ? "todo dia" : `a cada ${r.intervalDays} dias (datas fixas)`;
+  if (r.kind === "WEEKLY") {
+    const male = r.weekday === 0 || r.weekday === 6;
+    return `${male ? "todo" : "toda"} ${WEEKDAY_NAMES[r.weekday ?? 1]}`;
+  }
   if (r.kind === "MONTHLY_DAY") return `todo dia ${r.monthDay} do mês`;
   const day = WEEKDAY_NAMES[r.weekday ?? 0];
   // sábado e domingo são masculinos: "todo 1º sábado"
@@ -110,7 +137,6 @@ function weekOrdinalOf(dateIso: string) {
   const n = Math.ceil(Number(dateIso.slice(8, 10)) / 7);
   return n >= 5 ? LAST_WEEK : n;
 }
-const weekdayOf = (dateIso: string) => new Date(`${dateIso}T12:00:00Z`).getUTCDay();
 
 /** Regra a partir da escolha e da data do primeiro compromisso. */
 export function ruleFromChoice(choice: ActivityRepeat, dateIso: string, everyDays = 2): Recurrence {
@@ -125,7 +151,7 @@ export function ruleFromChoice(choice: ActivityRepeat, dateIso: string, everyDay
     case "MONTHLY_DAY":
       return { ...base, kind: "MONTHLY_DAY", intervalDays: 30, monthDay: Number(dateIso.slice(8, 10)) };
     case "MONTHLY_WEEKDAY":
-      return { ...base, kind: "MONTHLY_WEEKDAY", intervalDays: 30, weekOrdinal: weekOrdinalOf(dateIso), weekday: weekdayOf(dateIso) };
+      return { ...base, kind: "MONTHLY_WEEKDAY", intervalDays: 30, weekOrdinal: weekOrdinalOf(dateIso), weekday: weekdayOfIso(dateIso) };
   }
 }
 
@@ -135,7 +161,7 @@ export function repeatChoiceLabel(choice: ActivityRepeat, dateIso: string): stri
     case "DAILY":
       return "Todo dia";
     case "WEEKLY":
-      return `Toda semana (${WEEKDAY_NAMES[weekdayOf(dateIso)]})`;
+      return `Toda semana (${WEEKDAY_NAMES[weekdayOfIso(dateIso)]})`;
     case "EVERY_DAYS":
       return "A cada X dias";
     default: {
@@ -167,7 +193,7 @@ export function seriesDates(
   let date = startIso;
   while (dates.length < limit && (!untilIso || date <= untilIso)) {
     dates.push(date);
-    date = r.kind === "INTERVAL" ? addDays(date, r.intervalDays) : nextMonthlyOccurrence(r, date, false);
+    date = isMonthly(r) || r.kind === "WEEKLY" ? nextOnCalendar(r, date, false, addDays) : addDays(date, r.intervalDays);
   }
   return dates;
 }

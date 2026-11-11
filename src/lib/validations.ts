@@ -93,10 +93,11 @@ export const routineSchema = z
     alertDaysBefore: intField(0, 365),
     lastCompletedAt: optionalIsoDate,
   })
-  .refine((r) => r.repeatKind !== "INTERVAL" || r.intervalDays, {
+  .refine((r) => (r.repeatKind !== "INTERVAL" && r.repeatKind !== "INTERVAL_FIXED") || r.intervalDays, {
     message: "Informe de quantos em quantos dias",
     path: ["intervalDays"],
   })
+  .refine((r) => r.repeatKind !== "WEEKLY" || r.weekday !== undefined, { message: "Escolha o dia da semana", path: ["weekday"] })
   .refine((r) => r.repeatKind !== "MONTHLY_DAY" || r.monthDay, { message: "Informe o dia do mês", path: ["monthDay"] })
   .refine((r) => r.repeatKind !== "MONTHLY_WEEKDAY" || (r.weekOrdinal && r.weekday !== undefined), {
     message: "Escolha a semana e o dia da semana",

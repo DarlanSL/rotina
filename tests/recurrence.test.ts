@@ -126,3 +126,29 @@ describe("séries de compromissos", () => {
     expect(dates).toEqual(["2027-01-31", "2027-02-28", "2027-03-31"]);
   });
 });
+
+describe("semanal e intervalo em datas fixas", () => {
+  const monday = rule({ kind: "WEEKLY", weekday: 1, intervalDays: 7 });
+  const fixed10 = rule({ kind: "INTERVAL_FIXED", intervalDays: 10 });
+
+  it("toda segunda", () => {
+    // 11/11/2026 é quarta
+    expect(firstDueDate(monday, null, "2026-11-11", addDays)).toBe("2026-11-16");
+    expect(firstDueDate(monday, null, "2026-11-16", addDays)).toBe("2026-11-16");
+    expect(dueAfterCompletion(monday, "2026-11-16", "2026-11-16", addDays)).toBe("2026-11-23");
+    // concluiu antes (sábado): não pula a semana
+    expect(dueAfterCompletion(monday, "2026-11-16", "2026-11-14", addDays)).toBe("2026-11-23");
+    // com atraso (quarta seguinte): a próxima segunda
+    expect(dueAfterCompletion(monday, "2026-11-16", "2026-11-18", addDays)).toBe("2026-11-23");
+    expect(describeRecurrence(monday)).toBe("toda segunda-feira");
+    expect(describeRecurrence(rule({ kind: "WEEKLY", weekday: 6 }))).toBe("todo sábado");
+  });
+
+  it("a cada X dias em datas fixas: conta da data prevista", () => {
+    expect(dueAfterCompletion(fixed10, "2026-11-20", "2026-11-18", addDays)).toBe("2026-11-30");
+    expect(dueAfterCompletion(fixed10, "2026-11-20", "2026-11-20", addDays)).toBe("2026-11-30");
+    // atrasou 12 dias: pula a data que já passou
+    expect(dueAfterCompletion(fixed10, "2026-11-20", "2026-12-02", addDays)).toBe("2026-12-10");
+    expect(describeRecurrence(fixed10)).toBe("a cada 10 dias (datas fixas)");
+  });
+});

@@ -121,6 +121,8 @@ enum RepeatKind {
   INTERVAL // a cada X dias após concluir
   MONTHLY_DAY // todo dia N do mês
   MONTHLY_WEEKDAY // toda N-ésima (ou última) <dia da semana> do mês
+  INTERVAL_FIXED // a cada X dias em datas fixas (não depende de quando concluiu)
+  WEEKLY // toda semana num dia da semana
 }
 
 model Routine {

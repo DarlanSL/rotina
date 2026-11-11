@@ -15,10 +15,10 @@ function repeatFields(data: z.infer<typeof routineSchema>): Recurrence & { repea
   return {
     kind: data.repeatKind,
     // coluna obrigatória: nas regras mensais guarda ~30 dias só como referência
-    intervalDays: data.repeatKind === "INTERVAL" ? data.intervalDays! : 30,
+    intervalDays: data.repeatKind === "INTERVAL" || data.repeatKind === "INTERVAL_FIXED" ? data.intervalDays! : data.repeatKind === "WEEKLY" ? 7 : 30,
     monthDay: data.repeatKind === "MONTHLY_DAY" ? data.monthDay! : null,
     weekOrdinal: data.repeatKind === "MONTHLY_WEEKDAY" ? data.weekOrdinal! : null,
-    weekday: data.repeatKind === "MONTHLY_WEEKDAY" ? data.weekday! : null,
+    weekday: data.repeatKind === "MONTHLY_WEEKDAY" || data.repeatKind === "WEEKLY" ? data.weekday! : null,
     repeatTimes: data.repeatTimes ?? null,
   };
 }
