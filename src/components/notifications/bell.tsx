@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { NativeSelect } from "@/components/native-select";
 import { showNotice } from "@/components/notifications/engine";
+import { PushToggle } from "@/components/notifications/push-toggle";
 import { markAllSeen, refreshPermission, setLeadMinutes, useNotificationState } from "@/components/notifications/store";
 import { LEAD_OPTIONS } from "@/lib/notify";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,8 @@ export function NotificationBell({ className }: { className?: string }) {
             Tela de Início para habilitar.
           </p>
         )}
+
+        <PushToggle />
 
         <div className="flex items-center justify-between gap-2 border-b p-3">
           <label htmlFor="notif-lead" className="text-xs text-muted-foreground">

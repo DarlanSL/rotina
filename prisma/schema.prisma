@@ -38,6 +38,7 @@ model User {
   activitySeries   ActivitySeries[]
   sharedLists      ListShare[]
   shareNotices     ShareNotice[]
+  pushSubscriptions PushSubscription[]
 }
 
 // ---------- Diário de Atividades ----------
@@ -333,4 +334,18 @@ model ShareNotice {
 
   @@index([userId, updatedAt])
   @@index([userId, targetKey, actorId])
+}
+
+/// Aparelho que recebe o resumo das 9h por push (mesmo com o app fechado).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

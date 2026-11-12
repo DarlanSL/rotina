@@ -16,5 +16,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Tudo exceto login, cadastro, rotas de API (fazem a própria checagem), assets e arquivos do PWA
-  matcher: ["/((?!login|cadastro|api|_next/static|_next/image|favicon.ico|icon.svg|sw.js|manifest.webmanifest).*)"],
+  matcher: ["/((?!login|cadastro|api|_next/static|_next/image|favicon.ico|icon.svg|icon-192.png|icon-512.png|sw.js|manifest.webmanifest).*)"],
 };

@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   title: { default: "Rotina", template: "%s · Rotina" },
   description: "Diário de atividades, rotinas, documentos e ideias em um só lugar.",
   appleWebApp: { capable: true, title: "Rotina", statusBarStyle: "default" },
+  icons: { apple: "/icon-192.png" },
 };
 
 export const viewport: Viewport = {
