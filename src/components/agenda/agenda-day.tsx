@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ActivityRow, DocumentRow, ItemRow, RoutineRow } from "@/components/dashboard/bucket-list";
+import { ActivityRow, BillRow, DocumentRow, ItemRow, RoutineRow } from "@/components/dashboard/bucket-list";
 import { cn } from "@/lib/utils";
 import { diffDays, formatLongDateBR } from "@/lib/dates";
 import type { AgendaDay, AgendaEntry } from "@/lib/agenda";
@@ -22,6 +22,8 @@ function EntryRow({ entry, timezone, today }: { entry: AgendaEntry; timezone: st
       return <RoutineRow routine={entry.routine} today={today} showDue={false} />;
     case "document":
       return <DocumentRow document={entry.document} />;
+    case "bill":
+      return <BillRow bill={entry.bill} today={today} showDue={false} />;
   }
 }
 

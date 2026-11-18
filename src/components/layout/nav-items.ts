@@ -8,6 +8,7 @@ import {
   LightbulbIcon,
   ListChecksIcon,
   RefreshCwIcon,
+  WalletIcon,
 } from "lucide-react";
 
 /** Cor de identidade de cada módulo (classes completas para o Tailwind detectar). */
@@ -52,6 +53,11 @@ export const TONES = {
     tile: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
     active: "bg-teal-50 text-teal-800 dark:bg-teal-500/15 dark:text-teal-200",
   },
+  orange: {
+    icon: "text-orange-600 dark:text-orange-400",
+    tile: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+    active: "bg-orange-50 text-orange-800 dark:bg-orange-500/15 dark:text-orange-200",
+  },
   rose: {
     icon: "text-rose-600 dark:text-rose-400",
     tile: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
@@ -77,6 +83,7 @@ export const NAV_ITEMS = [
   },
   { key: "ideias", href: "/ideias", label: "Ideias", icon: LightbulbIcon, tone: "emerald", mobile: true },
   { key: "listas", href: "/listas", label: "Listas", icon: ListChecksIcon, tone: "teal", mobile: true },
+  { key: "contas", href: "/contas", label: "Contas", icon: WalletIcon, tone: "orange", mobile: true },
   { key: "projetos", href: "/projetos", label: "Projetos", icon: FolderKanbanIcon, tone: "rose", mobile: false },
   {
     key: "relatorios",

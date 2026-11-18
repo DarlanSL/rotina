@@ -39,6 +39,8 @@ model User {
   sharedLists      ListShare[]
   shareNotices     ShareNotice[]
   pushSubscriptions PushSubscription[]
+  projectGroups     ProjectGroup[]
+  bills             Bill[]
 }
 
 // ---------- Diário de Atividades ----------
@@ -225,13 +227,16 @@ model Project {
   description String?
   color       String?
   archived    Boolean  @default(false)
+  groupId     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   items Item[]
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group ProjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@unique([userId, name])
+  @@index([groupId])
 }
 
 model Item {
@@ -348,4 +353,64 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Grupo para organizar projetos (ex.: Pessoais, Trabalho, Viagem). Excluir o grupo deixa os projetos sem grupo.
+model ProjectGroup {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@unique([userId, name])
+}
+
+// ---------- Contas a pagar e a receber ----------
+
+enum BillKind {
+  PAYABLE // a pagar
+  RECEIVABLE // a receber
+}
+
+/// Conta com vencimento; repete com as mesmas regras das rotinas (repeatKind null = conta única).
+model Bill {
+  id              String      @id @default(cuid())
+  userId          String
+  kind            BillKind
+  title           String
+  notes           String?
+  amountCents     Int? // valor previsto, em centavos
+  repeatKind      RepeatKind?
+  intervalDays    Int         @default(30)
+  monthDay        Int?
+  weekOrdinal     Int?
+  weekday         Int?
+  repeatTimes     Int? // quantas vezes no total; null = sem fim
+  alertDaysBefore Int         @default(3)
+  nextDueAt       DateTime    @db.Date
+  active          Boolean     @default(true) // false = quitada / encerrada
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments BillPayment[]
+
+  @@index([userId, active, nextDueAt])
+}
+
+/// Pagamento (ou recebimento) de um vencimento.
+model BillPayment {
+  id          String   @id @default(cuid())
+  billId      String
+  dueDate     DateTime @db.Date // vencimento que foi pago
+  paidAt      DateTime @db.Date
+  amountCents Int?
+  createdAt   DateTime @default(now())
+
+  bill Bill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([billId, paidAt])
 }

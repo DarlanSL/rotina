@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FormField } from "@/components/form-field";
-import { NativeSelect } from "@/components/native-select";
-import { LAST_WEEK, ordinalLabel, WEEK_ORDINALS, WEEKDAY_NAMES, type RepeatKind } from "@/lib/recurrence";
+import { RepeatFields } from "@/components/repeat-fields";
+import type { RepeatKind } from "@/lib/recurrence";
 import { useAction } from "@/components/use-action";
 import { createRoutine, updateRoutine } from "@/app/(app)/rotinas/actions";
 import type { RoutineView } from "@/lib/queries/routines";
@@ -54,95 +54,12 @@ export function RoutineFormDialog({ routine, trigger }: { routine?: RoutineView;
               defaultValue={routine?.title}
             />
           </FormField>
-          <FormField label="Repetir" htmlFor={`${p}-kind`}>
-            <NativeSelect
-              id={`${p}-kind`}
-              name="repeatKind"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as RepeatKind)}
-            >
-              <option value="INTERVAL">A cada X dias (contando da conclusão)</option>
-              <option value="INTERVAL_FIXED">A cada X dias (datas fixas)</option>
-              <option value="WEEKLY">Toda semana num dia fixo (ex.: toda segunda)</option>
-              <option value="MONTHLY_DAY">Todo mês num dia fixo (ex.: dia 10)</option>
-              <option value="MONTHLY_WEEKDAY">Todo mês numa semana (ex.: 1ª quarta)</option>
-            </NativeSelect>
-          </FormField>
-          {(kind === "INTERVAL" || kind === "INTERVAL_FIXED") && (
-            <FormField
-              label="A cada quantos dias"
-              htmlFor={`${p}-interval`}
-              hint={
-                kind === "INTERVAL"
-                  ? "A próxima conta a partir do dia em que você concluir."
-                  : "A próxima conta a partir da data prevista, mesmo concluindo antes ou depois."
-              }
-            >
-              <Input
-                id={`${p}-interval`}
-                name="intervalDays"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={3650}
-                required
-                defaultValue={
-                  routine?.repeatKind === "INTERVAL" || routine?.repeatKind === "INTERVAL_FIXED" ? routine.intervalDays : 30
-                }
-              />
-            </FormField>
-          )}
-          {kind === "WEEKLY" && (
-            <FormField label="Dia da semana" htmlFor={`${p}-weekday-w`}>
-              <NativeSelect id={`${p}-weekday-w`} name="weekday" defaultValue={routine?.weekday ?? 1}>
-                {WEEKDAY_NAMES.map((name, i) => (
-                  <option key={name} value={i}>
-                    {name.charAt(0).toUpperCase() + name.slice(1)}
-                  </option>
-                ))}
-              </NativeSelect>
-            </FormField>
-          )}
-          {kind === "MONTHLY_DAY" && (
-            <FormField
-              label="Dia do mês"
-              htmlFor={`${p}-monthday`}
-              hint="Nos meses sem esse dia (ex.: 31), cai no último dia do mês."
-            >
-              <Input
-                id={`${p}-monthday`}
-                name="monthDay"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={31}
-                required
-                defaultValue={routine?.monthDay ?? 10}
-              />
-            </FormField>
-          )}
-          {kind === "MONTHLY_WEEKDAY" && (
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Semana" htmlFor={`${p}-ordinal`}>
-                <NativeSelect id={`${p}-ordinal`} name="weekOrdinal" defaultValue={routine?.weekOrdinal ?? 1}>
-                  {WEEK_ORDINALS.map((n) => (
-                    <option key={n} value={n}>
-                      {n === LAST_WEEK ? "Última" : ordinalLabel(n)}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </FormField>
-              <FormField label="Dia da semana" htmlFor={`${p}-weekday`}>
-                <NativeSelect id={`${p}-weekday`} name="weekday" defaultValue={routine?.weekday ?? 3}>
-                  {WEEKDAY_NAMES.map((name, i) => (
-                    <option key={name} value={i}>
-                      {name.charAt(0).toUpperCase() + name.slice(1)}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </FormField>
-            </div>
-          )}
+          <RepeatFields
+            prefix={p}
+            kind={kind}
+            onKindChange={(k) => setKind(k || "INTERVAL")}
+            defaults={routine && { ...routine, intervalDays: routine.repeatKind === "INTERVAL" || routine.repeatKind === "INTERVAL_FIXED" ? routine.intervalDays : 30 }}
+          />
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Quantas vezes" htmlFor={`${p}-times`} hint="Em branco: sem fim.">
               <Input

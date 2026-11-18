@@ -7,6 +7,7 @@ import { visibleActivity } from "@/lib/queries/sharing";
 import { extendSeries } from "@/lib/queries/series";
 import { toDocumentView, type DocumentView } from "@/lib/queries/documents";
 import { toRoutineView, type RoutineView } from "@/lib/queries/routines";
+import { toBillView, type BillView } from "@/lib/queries/bills";
 import type { ItemType, Priority } from "@/generated/prisma/enums";
 
 // Maior janela de alerta permitida pelos formulários
@@ -30,16 +31,18 @@ export type Bucket = {
   routines: RoutineView[];
   documents: DocumentView[];
   items: ScheduledItem[];
+  /** Contas a pagar / receber */
+  bills: BillView[];
 };
 
 export type DoneToday =
   | { kind: "routine"; id: string; title: string; at: Date }
   | { kind: "item"; id: string; title: string; type: ItemType; at: Date };
 
-const emptyBucket = (): Bucket => ({ activities: [], routines: [], documents: [], items: [] });
+const emptyBucket = (): Bucket => ({ activities: [], routines: [], documents: [], items: [], bills: [] });
 
 export function bucketSize(b: Bucket) {
-  return b.activities.length + b.routines.length + b.documents.length + b.items.length;
+  return b.activities.length + b.routines.length + b.documents.length + b.items.length + b.bills.length;
 }
 
 export async function getDashboardData(user: CurrentUser) {
@@ -51,7 +54,7 @@ export async function getDashboardData(user: CurrentUser) {
   const startOfTomorrow = startOfDayInTz(addDays(today, 1), tz);
   const itemHorizon = startOfDayInTz(addDays(today, ITEM_LOOKAHEAD_DAYS + 1), tz);
 
-  const [activities, routines, documents, items, routinesDone, itemsDone, openImprovements] = await Promise.all([
+  const [activities, routines, documents, items, routinesDone, itemsDone, openImprovements, bills] = await Promise.all([
     db.activity.findMany({
       where: { ...visibleActivity(user.id), date: toDbDate(today) },
       orderBy: activityOrder,
@@ -95,6 +98,10 @@ export async function getDashboardData(user: CurrentUser) {
     db.item.count({
       where: { userId: user.id, type: "IMPROVEMENT", status: { in: ["OPEN", "IN_PROGRESS"] } },
     }),
+    db.bill.findMany({
+      where: { userId: user.id, active: true, nextDueAt: { lte: horizon } },
+      orderBy: { nextDueAt: "asc" },
+    }),
   ]);
 
   const agenda = emptyBucket();
@@ -105,6 +112,11 @@ export async function getDashboardData(user: CurrentUser) {
     if (r.daysLeft < 0) overdue.routines.push(r);
     else if (r.daysLeft === 0) agenda.routines.push(r);
     else if (r.status === "warning") upcoming.routines.push(r);
+  }
+  for (const b of bills.map((b) => toBillView(b, today))) {
+    if (b.daysLeft < 0) overdue.bills.push(b);
+    else if (b.daysLeft === 0) agenda.bills.push(b);
+    else if (b.status === "warning") upcoming.bills.push(b);
   }
   for (const d of documents.map((d) => toDocumentView(d, today))) {
     if (d.daysLeft < 0) overdue.documents.push(d);

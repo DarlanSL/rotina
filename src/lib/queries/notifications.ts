@@ -95,9 +95,14 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
     ...b.routines.map((r) => r.title),
     ...b.documents.map((d) => d.name),
     ...b.items.map((i) => i.title),
+    ...b.bills.map((x) => x.title),
   ];
   if (bucketSize(overdue)) lines.push(`Vencidos: ${names(overdue).join(", ")}`);
-  const todayNames = [...agenda.routines.map((r) => r.title), ...agenda.documents.map((d) => `${d.name} (vence hoje)`)];
+  const todayNames = [
+    ...agenda.routines.map((r) => r.title),
+    ...agenda.documents.map((d) => `${d.name} (vence hoje)`),
+    ...agenda.bills.map((b) => `${b.title} (${b.kind === "PAYABLE" ? "pagar" : "receber"} hoje)`),
+  ];
   if (todayNames.length) lines.push(`Hoje: ${todayNames.join(", ")}`);
   const soonDocs = upcoming.documents.map((d) => `${d.name} em ${d.daysLeft} dia(s)`);
   if (soonDocs.length) lines.push(`Documentos: ${soonDocs.join(", ")}`);
@@ -107,7 +112,7 @@ export async function getNotificationFeed(user: CurrentUser): Promise<Notificati
     events,
     summary: {
       overdue: bucketSize(overdue),
-      today: agenda.routines.length + agenda.documents.length,
+      today: agenda.routines.length + agenda.documents.length + agenda.bills.length,
       upcoming: bucketSize(upcoming),
       lines,
     },

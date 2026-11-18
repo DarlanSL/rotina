@@ -64,7 +64,7 @@ export default async function DashboardPage() {
           icon={<AlertTriangleIcon />}
           tone="red"
           title="Vencidos"
-          description="Revisões, documentos e lembretes com prazo já passado."
+          description="Revisões, contas, documentos e lembretes com prazo já passado."
         >
           {overdueCount === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum item vencido. 🎉</p>
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
             {agendaCount === 0 ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <PartyPopperIcon className="size-6 text-indigo-500" />
-                Nenhuma revisão, lembrete ou vencimento para hoje.
+                Nenhuma revisão, conta, lembrete ou vencimento para hoje.
               </div>
             ) : (
               <BucketList bucket={data.agenda} timezone={user.timezone} today={data.today} showDue={false} />

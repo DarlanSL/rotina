@@ -9,7 +9,7 @@ import { ProgressBar } from "@/components/projetos/progress-bar";
 import { ProjectActions } from "@/components/projetos/project-actions";
 import { requireUser } from "@/lib/session";
 import { listItems, type ItemView } from "@/lib/queries/items";
-import { getProject, improvementProgress, listProjectOptions } from "@/lib/queries/projects";
+import { getProject, improvementProgress, listProjectGroups, listProjectOptions } from "@/lib/queries/projects";
 import { ITEM_TYPE_LABEL } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Projeto" };
@@ -40,10 +40,12 @@ export default async function ProjetoPage(props: PageProps<"/projetos/[id]">) {
   const project = await getProject(user, id);
   if (!project) notFound();
 
-  const [items, projects] = await Promise.all([
+  const [items, projects, groups] = await Promise.all([
     listItems(user, { projectId: id, status: "all" }),
     listProjectOptions(user),
+    listProjectGroups(user),
   ]);
+  const group = groups.find((g) => g.id === project.groupId);
 
   const improvements = items.filter((i) => i.type === "IMPROVEMENT");
   const progress = improvementProgress(improvements.map((i) => i.status));
@@ -69,7 +71,7 @@ export default async function ProjetoPage(props: PageProps<"/projetos/[id]">) {
         href="/projetos"
         className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeftIcon className="size-4" /> Projetos
+        <ArrowLeftIcon className="size-4" /> Projetos{group ? ` · ${group.name}` : ""}
       </Link>
       <PageHeader title={project.name} description={project.description ?? undefined}>
         <ProjectActions
@@ -79,7 +81,9 @@ export default async function ProjetoPage(props: PageProps<"/projetos/[id]">) {
             description: project.description,
             color: project.color,
             archived: project.archived,
+            groupId: project.groupId,
           }}
+          groups={groups}
         />
       </PageHeader>
 

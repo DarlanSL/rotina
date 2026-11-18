@@ -3,6 +3,7 @@ import type { ActivityView } from "@/lib/queries/activities";
 import type { ScheduledItem } from "@/lib/queries/dashboard";
 import type { DocumentView } from "@/lib/queries/documents";
 import type { RoutineView } from "@/lib/queries/routines";
+import type { BillView } from "@/lib/queries/bills";
 
 export const AGENDA_SPANS = [7, 14, 30] as const;
 export type AgendaSpan = (typeof AGENDA_SPANS)[number];
@@ -11,7 +12,8 @@ export type AgendaEntry =
   | { kind: "activity"; key: string; time: string | null; activity: ActivityView; past: boolean }
   | { kind: "item"; key: string; time: string; item: ScheduledItem }
   | { kind: "routine"; key: string; time: null; routine: RoutineView }
-  | { kind: "document"; key: string; time: null; document: DocumentView };
+  | { kind: "document"; key: string; time: null; document: DocumentView }
+  | { kind: "bill"; key: string; time: null; bill: BillView };
 
 export type AgendaDay = {
   date: string;
@@ -31,6 +33,7 @@ export type AgendaInput = {
   items: { item: ScheduledItem; date: string; time: string }[];
   routines: RoutineView[];
   documents: DocumentView[];
+  bills?: BillView[];
 };
 
 // Sem horário (o dia todo) primeiro; depois por horário; no empate, atividade antes de lembrete
@@ -53,6 +56,7 @@ export function buildAgendaDays(input: AgendaInput): AgendaDay[] {
   for (const { item, date, time } of input.items) push(date, { kind: "item", key: `item-${item.id}`, time, item });
   for (const r of input.routines) push(r.nextDueAt, { kind: "routine", key: `rt-${r.id}`, time: null, routine: r });
   for (const d of input.documents) push(d.expiresAt, { kind: "document", key: `doc-${d.id}`, time: null, document: d });
+  for (const b of input.bills ?? []) push(b.nextDueAt, { kind: "bill", key: `bill-${b.id}`, time: null, bill: b });
 
   return [...byDate].map(([date, entries]) => {
     entries.sort(compareEntries);

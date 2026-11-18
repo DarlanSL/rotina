@@ -54,10 +54,12 @@ export async function morningDigest(user: CurrentUser) {
     routinesToday: agenda.routines.map((r) => r.title),
     documentsToday: agenda.documents.map((d) => d.name),
     remindersToday: agenda.items.map((i) => i.title),
+    billsToday: agenda.bills.map((b) => ({ title: b.title, kind: b.kind, amountCents: b.amountCents })),
     overdue: [
       ...overdue.routines.map((r) => r.title),
       ...overdue.documents.map((d) => d.name),
       ...overdue.items.map((i) => i.title),
+      ...overdue.bills.map((b) => `${b.title} (conta)`),
     ],
     documentsSoon: upcoming.documents.map((d) => ({ name: d.name, daysLeft: d.daysLeft })),
   });

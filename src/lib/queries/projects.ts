@@ -21,12 +21,24 @@ export async function listProjects(user: CurrentUser, includeArchived = false) {
     description: p.description,
     color: p.color,
     archived: p.archived,
+    groupId: p.groupId,
     progress: improvementProgress(p.items.filter((i) => i.type === "IMPROVEMENT").map((i) => i.status)),
     pendingItems: p.items.filter((i) => i.status === "OPEN" || i.status === "IN_PROGRESS").length,
   }));
 }
 
 export type ProjectSummary = Awaited<ReturnType<typeof listProjects>>[number];
+
+/** Grupos do usuário (Pessoais, Trabalho, Viagem…), em ordem alfabética. */
+export async function listProjectGroups(user: CurrentUser) {
+  return db.projectGroup.findMany({
+    where: { userId: user.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+export type ProjectGroupOption = Awaited<ReturnType<typeof listProjectGroups>>[number];
 
 export async function listProjectOptions(user: CurrentUser) {
   return db.project.findMany({

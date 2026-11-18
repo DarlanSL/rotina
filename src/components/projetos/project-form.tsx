@@ -7,14 +7,27 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FormField } from "@/components/form-field";
+import { NativeSelect } from "@/components/native-select";
 import { useAction } from "@/components/use-action";
 import { createProject, updateProject } from "@/app/(app)/projetos/actions";
 import { PROJECT_COLOR_CLASS, PROJECT_COLORS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-type ProjectData = { id: string; name: string; description: string | null; color: string | null };
+type ProjectData = { id: string; name: string; description: string | null; color: string | null; groupId: string | null };
+type GroupOption = { id: string; name: string };
 
-export function ProjectFormDialog({ project, trigger }: { project?: ProjectData; trigger?: React.ReactElement }) {
+export function ProjectFormDialog({
+  project,
+  groups = [],
+  defaultGroupId,
+  trigger,
+}: {
+  project?: ProjectData;
+  groups?: GroupOption[];
+  /** Ao criar dentro de um grupo, ele já vem escolhido */
+  defaultGroupId?: string | null;
+  trigger?: React.ReactElement;
+}) {
   const [open, setOpen] = useState(false);
   const { pending, run } = useAction();
   const p = project ? `pj-${project.id}` : "pj-new";
@@ -47,6 +60,22 @@ export function ProjectFormDialog({ project, trigger }: { project?: ProjectData;
           <FormField label="Nome" htmlFor={`${p}-name`}>
             <Input id={`${p}-name`} name="name" required maxLength={120} defaultValue={project?.name} />
           </FormField>
+          {groups.length > 0 && (
+            <FormField label="Grupo" htmlFor={`${p}-group`}>
+              <NativeSelect
+                id={`${p}-group`}
+                name="groupId"
+                defaultValue={project ? (project.groupId ?? "") : (defaultGroupId ?? "")}
+              >
+                <option value="">Sem grupo</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </FormField>
+          )}
           <FormField label="Descrição" htmlFor={`${p}-desc`}>
             <Textarea id={`${p}-desc`} name="description" rows={3} defaultValue={project?.description ?? ""} />
           </FormField>

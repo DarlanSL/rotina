@@ -8,6 +8,7 @@ import { visibleActivity } from "@/lib/queries/sharing";
 import { extendSeries } from "@/lib/queries/series";
 import { toDocumentView } from "@/lib/queries/documents";
 import { toRoutineView } from "@/lib/queries/routines";
+import { toBillView } from "@/lib/queries/bills";
 import type { Bucket, ScheduledItem } from "@/lib/queries/dashboard";
 
 const itemSelect = {
@@ -32,7 +33,8 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
   const rangeEnd = startOfDayInTz(addDays(to, 1), tz);
   const startOfToday = startOfDayInTz(today, tz);
 
-  const [activities, items, routines, documents, overdueItems, overdueRoutines, overdueDocuments] = await Promise.all([
+  const [activities, items, routines, documents, overdueItems, overdueRoutines, overdueDocuments, bills, overdueBills] =
+    await Promise.all([
     db.activity.findMany({
       where: { ...visibleActivity(user.id), date: { gte: toDbDate(from), lte: toDbDate(to) } },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
@@ -70,6 +72,16 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
           orderBy: { expiresAt: "asc" },
         })
       : [],
+    db.bill.findMany({
+      where: { userId: user.id, active: true, nextDueAt: { gte: toDbDate(from), lte: toDbDate(to) } },
+      orderBy: { title: "asc" },
+    }),
+    withOverdue
+      ? db.bill.findMany({
+          where: { userId: user.id, active: true, nextDueAt: { lt: toDbDate(today) } },
+          orderBy: { nextDueAt: "asc" },
+        })
+      : [],
   ]);
 
   const now = formatTimeOfDay(new Date(), tz);
@@ -87,6 +99,7 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
     })),
     routines: routines.map((r) => toRoutineView(r, today)),
     documents: documents.map((d) => toDocumentView(d, today)),
+    bills: bills.map((b) => toBillView(b, today)),
   });
 
   const overdue: Bucket = {
@@ -94,6 +107,7 @@ export async function getAgenda(user: CurrentUser, from: string, days: number) {
     items: overdueItems as ScheduledItem[],
     routines: overdueRoutines.map((r) => toRoutineView(r, today)),
     documents: overdueDocuments.map((d) => toDocumentView(d, today)),
+    bills: overdueBills.map((b) => toBillView(b, today)),
   };
 
   return { today, from, to, now, days: agendaDays, overdue };

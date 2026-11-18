@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { AlarmClockIcon, CalendarClockIcon, FileTextIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
+import { AlarmClockIcon, CalendarClockIcon, FileTextIcon, RefreshCwIcon, WalletIcon, WrenchIcon } from "lucide-react";
+import { PayDialog } from "@/components/contas/pay-dialog";
+import { formatBRL } from "@/lib/money";
+import type { BillView } from "@/lib/queries/bills";
 import { StatusBadge } from "@/components/status-badge";
 import { CompleteButton } from "@/components/rotinas/complete-button";
 import { PostponeDialog } from "@/components/rotinas/postpone-dialog";
@@ -110,6 +113,23 @@ export function RoutineRow({ routine: r, today, showDue }: { routine: RoutineVie
   );
 }
 
+export function BillRow({ bill: b, today, showDue }: { bill: BillView } & Omit<RowContext, "timezone">) {
+  const payable = b.kind === "PAYABLE";
+  return (
+    <Row
+      icon={WalletIcon}
+      tone="orange"
+      title={b.title}
+      subtitle={`${payable ? "A pagar" : "A receber"}${b.amountCents !== null ? ` · ${formatBRL(b.amountCents)}` : ""}${
+        showDue ? ` · vence ${formatDateBR(b.nextDueAt)}` : ""
+      }`}
+      href={payable ? "/contas" : "/contas?tipo=receber"}
+      badge={showDue ? <StatusBadge status={b.status} daysLeft={b.daysLeft} /> : undefined}
+      actions={<PayDialog bill={b} today={today} size="xs" />}
+    />
+  );
+}
+
 export function DocumentRow({ document: d }: { document: DocumentView }) {
   return (
     <Row
@@ -145,6 +165,9 @@ export function BucketList({
       ))}
       {bucket.items.map((i) => (
         <ItemRow key={`item-${i.id}`} item={i} timezone={timezone} showDue={showDue} />
+      ))}
+      {bucket.bills.map((b) => (
+        <BillRow key={`bill-${b.id}`} bill={b} today={today} showDue={showDue} />
       ))}
       {bucket.routines.map((r) => (
         <RoutineRow key={`rt-${r.id}`} routine={r} today={today} showDue={showDue} />

@@ -77,6 +77,14 @@ function nextOnCalendar(r: Recurrence, fromIso: string, inclusive: boolean, addD
   return r.kind === "WEEKLY" ? nextWeekday(r.weekday ?? 1, fromIso, inclusive, addDays) : nextMonthlyOccurrence(r, fromIso, inclusive);
 }
 
+/**
+ * Primeiro vencimento a partir de uma data escolhida (contas): nas regras de calendário,
+ * a primeira data da regra nesse dia ou depois; nas de intervalo, a própria data.
+ */
+export function firstOccurrenceFrom(r: Recurrence, fromIso: string, addDays: (iso: string, n: number) => string) {
+  return isMonthly(r) || r.kind === "WEEKLY" ? nextOnCalendar(r, fromIso, true, addDays) : fromIso;
+}
+
 /** Primeira data ao criar/editar: depois da última vez feita ou, sem ela, a partir de hoje. */
 export function firstDueDate(r: Recurrence, lastCompletedIso: string | null, todayIso: string, addDays: (iso: string, n: number) => string) {
   if (r.kind === "INTERVAL" || r.kind === "INTERVAL_FIXED") {

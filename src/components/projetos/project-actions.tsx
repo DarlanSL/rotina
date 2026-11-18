@@ -7,15 +7,23 @@ import { useAction } from "@/components/use-action";
 import { ProjectFormDialog } from "@/components/projetos/project-form";
 import { deleteProject, setProjectArchived } from "@/app/(app)/projetos/actions";
 
-type ProjectData = { id: string; name: string; description: string | null; color: string | null; archived: boolean };
+type ProjectData = {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  archived: boolean;
+  groupId: string | null;
+};
 
-export function ProjectActions({ project }: { project: ProjectData }) {
+export function ProjectActions({ project, groups }: { project: ProjectData; groups: { id: string; name: string }[] }) {
   const { pending, run } = useAction();
 
   return (
     <>
       <ProjectFormDialog
         project={project}
+        groups={groups}
         trigger={
           <Button variant="outline" size="sm">
             <PencilIcon /> Editar

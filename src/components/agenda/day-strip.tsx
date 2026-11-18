@@ -9,6 +9,7 @@ function dotClass(e: AgendaEntry) {
   if (e.kind === "activity") return "bg-sky-500";
   if (e.kind === "routine") return "bg-violet-500";
   if (e.kind === "document") return "bg-amber-500";
+  if (e.kind === "bill") return "bg-orange-500";
   return e.item.type === "REMINDER" ? "bg-emerald-500" : "bg-rose-500";
 }
 

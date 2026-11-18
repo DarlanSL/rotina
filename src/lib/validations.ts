@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isTimeBefore } from "@/lib/dates";
 import { NOTIFY_BEFORE_OPTIONS } from "@/lib/notify";
 import { ACTIVITY_REPEATS, MAX_SERIES_TIMES, REPEAT_KINDS } from "@/lib/recurrence";
+import { parseMoney } from "@/lib/money";
 
 // Campos de formulário vazios chegam como "" — tratamos como ausentes
 const optionalText = (max = 5000) =>
@@ -137,7 +138,55 @@ export const projectSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome").max(120),
   description: optionalText(),
   color: optionalText(20),
+  // "" = sem grupo
+  groupId: optionalText(40),
 });
+
+export const groupNameSchema = z.string().trim().min(1, "Informe o nome do grupo").max(60);
+
+// ---------- Contas a pagar / receber ----------
+
+/** "1.234,56" → 123456 centavos; vazio = sem valor. */
+const moneyField = z.preprocess(
+  (v) => (typeof v === "string" ? parseMoney(v) : v),
+  z
+    .number({ error: "Valor inválido (ex.: 1.234,56)" })
+    .int()
+    .min(0, "Valor inválido")
+    .max(99_999_999_99, "Valor muito alto")
+    .nullable()
+    .optional()
+    .refine((n) => n === null || n === undefined || !Number.isNaN(n), "Valor inválido (ex.: 1.234,56)"),
+);
+
+export const billSchema = z
+  .object({
+    kind: z.enum(["PAYABLE", "RECEIVABLE"]),
+    title: z.string().trim().min(1, "Informe a descrição").max(200),
+    notes: optionalText(),
+    amount: moneyField,
+    dueDate: isoDate,
+    // "" = não repete
+    repeatKind: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.enum(REPEAT_KINDS).optional()),
+    intervalDays: optionalInt(1, 3650),
+    monthDay: optionalInt(1, 31),
+    weekOrdinal: optionalInt(-1, 4).refine((n) => n !== 0, "Semana inválida"),
+    weekday: optionalInt(0, 6),
+    repeatTimes: optionalInt(1, 999),
+    alertDaysBefore: intField(0, 365),
+  })
+  .refine((r) => (r.repeatKind !== "INTERVAL" && r.repeatKind !== "INTERVAL_FIXED") || r.intervalDays, {
+    message: "Informe de quantos em quantos dias",
+    path: ["intervalDays"],
+  })
+  .refine((r) => r.repeatKind !== "WEEKLY" || r.weekday !== undefined, { message: "Escolha o dia da semana", path: ["weekday"] })
+  .refine((r) => r.repeatKind !== "MONTHLY_DAY" || r.monthDay, { message: "Informe o dia do mês", path: ["monthDay"] })
+  .refine((r) => r.repeatKind !== "MONTHLY_WEEKDAY" || (r.weekOrdinal && r.weekday !== undefined), {
+    message: "Escolha a semana e o dia da semana",
+    path: ["weekday"],
+  });
+
+export const billPaymentSchema = z.object({ paidAt: isoDate, amount: moneyField });
 
 // ---------- Contas ----------
 
